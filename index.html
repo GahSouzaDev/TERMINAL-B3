@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>B3 ANALYTICS // Análise de FIIs e Ações</title>
     <style>
-        /* ===================================================================
-               Banking‑grade design — escuro, limpo, tipografia profissional.
-               =================================================================== */
         :root {
             --bg: #080c14;
             --bg-2: #0d1320;
@@ -65,14 +62,13 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--gold-dim);
         }
-
         button,
         input,
         select {
             font-family: inherit;
         }
 
-        /* ---------- HEADER (banking style) ---------- */
+        /* ---------- HEADER ---------- */
         header {
             position: sticky;
             top: 0;
@@ -118,14 +114,18 @@
             padding-left: 8px;
             border-left: 1px solid var(--line);
         }
-
         .controls {
             display: flex;
             gap: 8px;
             align-items: center;
             flex-wrap: wrap;
         }
-        .controls input {
+        .ticker-wrap {
+            position: relative;
+            display: flex;
+            align-items: stretch;
+        }
+        .ticker-wrap input {
             background: var(--bg-2);
             border: 1px solid var(--line);
             color: var(--text);
@@ -133,80 +133,76 @@
             font-size: 13px;
             font-weight: 600;
             padding: 10px 14px;
-            border-radius: 8px;
+            border-radius: 8px 0 0 8px;
             outline: none;
             transition: border-color .15s, box-shadow .15s;
-            min-width: 120px;
-        }
-        .controls input::placeholder {
-            color: var(--muted-2);
-            font-weight: 400;
-        }
-        .controls input:focus {
-            border-color: var(--gold-dim);
-            box-shadow: 0 0 0 3px var(--gold-glow);
-        }
-        .ticker-wrap {
-            position: relative;
-            display: flex;
-        }
-        .ticker-wrap input {
-            border-top-right-radius: 0;
-            border-bottom-right-radius: 0;
-            border-right: none;
-            min-width: 110px;
+            min-width: 140px;
             text-transform: uppercase;
             letter-spacing: .4px;
         }
-        #tickerDropdownBtn {
+        .ticker-wrap input::placeholder {
+            color: var(--muted-2);
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+        .ticker-wrap input:focus {
+            border-color: var(--gold-dim);
+            box-shadow: 0 0 0 3px var(--gold-glow);
+        }
+        #tickerSelectBtn {
             background: var(--bg-2);
             border: 1px solid var(--line);
             border-left: none;
             color: var(--muted);
-            border-top-right-radius: 8px;
-            border-bottom-right-radius: 8px;
+            border-radius: 0 8px 8px 0;
             padding: 0 14px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 16px;
             transition: color .2s, border-color .2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        #tickerDropdownBtn:hover {
+        #tickerSelectBtn:hover {
             color: var(--gold);
             border-color: var(--gold-dim);
         }
 
-        .ticker-dropdown {
+        /* ---------- AUTOCOMPLETE DROPDOWN ---------- */
+        .autocomplete-dropdown {
             display: none;
             position: absolute;
             top: calc(100% + 6px);
             left: 0;
-            z-index: 50;
-            width: 300px;
-            max-height: 420px;
+            z-index: 55;
+            width: 340px;
+            max-height: 380px;
             overflow-y: auto;
             background: var(--panel);
             border: 1px solid var(--line);
             border-radius: 10px;
             box-shadow: var(--shadow);
-            padding: 8px;
+            padding: 6px;
         }
-        .ticker-dropdown.open {
+        .autocomplete-dropdown.open {
             display: block;
+            animation: fadeSlide 0.15s ease-out;
         }
-        .ticker-dropdown .td-group {
+        .autocomplete-dropdown .ac-group-label {
             font-family: var(--mono);
-            font-size: 9.5px;
+            font-size: 9px;
             color: var(--gold);
             text-transform: uppercase;
-            letter-spacing: .8px;
+            letter-spacing: 1px;
             padding: 10px 10px 4px;
             border-bottom: 1px solid var(--line-soft);
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
-        .ticker-dropdown .td-group:not(:first-child) {
-            margin-top: 6px;
+        .autocomplete-dropdown .ac-group-label:not(:first-child) {
+            margin-top: 4px;
         }
-        .ticker-dropdown .td-item {
+        .autocomplete-dropdown .ac-item {
             font-family: var(--mono);
             font-size: 12.5px;
             padding: 7px 12px;
@@ -215,11 +211,246 @@
             color: var(--text);
             transition: background .12s, color .12s;
         }
-        .ticker-dropdown .td-item:hover {
+        .autocomplete-dropdown .ac-item:hover,
+        .autocomplete-dropdown .ac-item.active {
             background: var(--panel-2);
             color: var(--gold);
         }
+        .autocomplete-dropdown .ac-item strong {
+            color: var(--gold);
+            font-weight: 700;
+        }
+        .autocomplete-dropdown .ac-empty {
+            padding: 16px;
+            text-align: center;
+            color: var(--muted);
+            font-family: var(--mono);
+            font-size: 12px;
+        }
 
+        /* ---------- LOADING OVERLAY ---------- */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(8, 12, 20, 0.82);
+            z-index: 200;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 22px;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+        .loading-overlay.active {
+            display: flex;
+        }
+        .spinner-ring {
+            width: 52px;
+            height: 52px;
+            border: 3px solid var(--line);
+            border-top-color: var(--gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        .loading-text {
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--muted);
+            letter-spacing: .5px;
+        }
+        .loading-sub {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted-2);
+            letter-spacing: .4px;
+        }
+
+        /* ---------- MODAL DE SELEÇÃO ---------- */
+        .ticker-modal-overlay {
+            display: flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.72);
+            z-index: 150;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.22s, visibility 0.22s;
+        }
+        .ticker-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .ticker-modal {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            width: 700px;
+            max-width: 94vw;
+            max-height: 82vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65);
+            transform: scale(0.94) translateY(14px);
+            transition: transform 0.22s;
+            overflow: hidden;
+        }
+        .ticker-modal-overlay.active .ticker-modal {
+            transform: scale(1) translateY(0);
+        }
+        .ticker-modal-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--line);
+            flex-shrink: 0;
+        }
+        .ticker-modal-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .ticker-modal-header input {
+            flex: 1;
+            background: var(--bg-2);
+            border: 1px solid var(--line);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 13px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color .15s;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+        }
+        .ticker-modal-header input::placeholder {
+            text-transform: none;
+            letter-spacing: 0;
+            color: var(--muted-2);
+        }
+        .ticker-modal-header input:focus {
+            border-color: var(--gold-dim);
+        }
+        .ticker-modal-close {
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-size: 26px;
+            cursor: pointer;
+            padding: 0 6px;
+            line-height: 1;
+            transition: color .15s;
+            flex-shrink: 0;
+        }
+        .ticker-modal-close:hover {
+            color: var(--crimson);
+        }
+        .ticker-modal-tabs {
+            display: flex;
+            gap: 2px;
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--line-soft);
+            flex-shrink: 0;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            -webkit-overflow-scrolling: touch;
+        }
+        .ticker-modal-tabs::-webkit-scrollbar {
+            height: 4px;
+        }
+        .ticker-modal-tab {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: .4px;
+            padding: 7px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            white-space: nowrap;
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--muted);
+            transition: all .15s;
+            flex-shrink: 0;
+        }
+        .ticker-modal-tab:hover {
+            color: var(--text);
+            background: var(--panel-2);
+        }
+        .ticker-modal-tab.active {
+            color: var(--gold);
+            background: var(--panel-3);
+            border-color: var(--gold-dim);
+        }
+        .ticker-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px 18px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-content: flex-start;
+        }
+        .ticker-chip {
+            background: var(--panel-2);
+            border: 1px solid var(--line);
+            color: var(--text);
+            padding: 8px 14px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-family: var(--mono);
+            font-size: 11.5px;
+            font-weight: 600;
+            letter-spacing: .3px;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+        .ticker-chip:hover {
+            background: var(--panel-3);
+            border-color: var(--gold-dim);
+            color: var(--gold);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .ticker-chip strong {
+            color: var(--gold);
+            font-weight: 700;
+        }
+        .ticker-modal-body .no-results {
+            width: 100%;
+            text-align: center;
+            color: var(--muted);
+            font-family: var(--mono);
+            font-size: 13px;
+            padding: 30px 0;
+        }
+        .ticker-modal-body .cat-label {
+            width: 100%;
+            font-family: var(--mono);
+            font-size: 9px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 4px 0 2px;
+            margin-top: 4px;
+            border-bottom: 1px solid var(--line-soft);
+        }
+
+        /* ---------- BOTÕES ---------- */
         .btn {
             background: var(--gold);
             color: #0a0e17;
@@ -244,6 +475,7 @@
             opacity: .5;
             cursor: not-allowed;
             box-shadow: none;
+            filter: none;
         }
         .btn.ghost {
             background: transparent;
@@ -255,6 +487,7 @@
             border-color: var(--gold-dim);
             color: var(--gold);
             box-shadow: none;
+            filter: none;
         }
         .btn.ghost:active {
             transform: scale(.97);
@@ -267,9 +500,10 @@
             padding: 24px 28px 60px;
             max-width: 1600px;
             margin: 0 auto;
+            position: relative;
         }
 
-        /* ---------- HERO (banking metrics) ---------- */
+        /* ---------- HERO ---------- */
         .hero-row {
             display: grid;
             grid-template-columns: 1.8fr 1fr 1fr 1fr 1fr 1fr;
@@ -415,7 +649,7 @@
             height: 100%;
         }
 
-        /* ---------- TABLES (banking clean) ---------- */
+        /* ---------- TABLES ---------- */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -468,7 +702,7 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* ---------- AI PANEL (banking insight) ---------- */
+        /* ---------- AI PANEL ---------- */
         .ai-panel {
             background: linear-gradient(145deg, #0f172a, #111a2a);
             border: 1px solid var(--gold-dim);
@@ -652,25 +886,44 @@
             main {
                 padding: 14px 14px 40px;
             }
-            .controls input {
-                min-width: 80px;
+            .ticker-wrap input {
+                min-width: 90px;
                 font-size: 12px;
                 padding: 8px 10px;
+            }
+            #tickerSelectBtn {
+                padding: 0 10px;
+                font-size: 14px;
             }
             .btn {
                 font-size: 12px;
                 padding: 8px 14px;
             }
-            .ticker-dropdown {
+            .autocomplete-dropdown {
                 width: 260px;
-                left: -40px;
+                left: -20px;
+            }
+            .ticker-modal {
+                max-width: 98vw;
+                max-height: 90vh;
+                border-radius: 10px;
+            }
+            .ticker-modal-header {
+                padding: 12px 14px;
+            }
+            .ticker-modal-body {
+                padding: 10px 12px;
+                gap: 6px;
+            }
+            .ticker-chip {
+                font-size: 10.5px;
+                padding: 6px 10px;
             }
             .card {
                 padding: 14px 14px 16px;
             }
         }
 
-        /* ---------- KEYFRAMES ---------- */
         @keyframes fadeSlide {
             from {
                 opacity: 0;
@@ -691,6 +944,27 @@
 </head>
 <body>
 
+    <!-- ========== LOADING OVERLAY ========== -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner-ring"></div>
+        <p class="loading-text">Carregando informações do ativo...</p>
+        <p class="loading-sub">Consultando brapi.dev · B3 / CVM</p>
+    </div>
+
+    <!-- ========== MODAL DE SELEÇÃO DE ATIVOS ========== -->
+    <div id="tickerModalOverlay" class="ticker-modal-overlay">
+        <div class="ticker-modal">
+            <div class="ticker-modal-header">
+                <span class="ticker-modal-icon">🔍</span>
+                <input type="text" id="modalSearchInput" placeholder="Digite para buscar qualquer ativo..." autocomplete="off" />
+                <button class="ticker-modal-close" id="modalCloseBtn">&times;</button>
+            </div>
+            <div class="ticker-modal-tabs" id="modalTabs"></div>
+            <div class="ticker-modal-body" id="modalGrid"></div>
+        </div>
+    </div>
+
+    <!-- ========== HEADER ========== -->
     <header>
         <div class="brand">
             <span class="mark"></span>
@@ -699,15 +973,16 @@
         </div>
         <div class="controls">
             <div class="ticker-wrap">
-                <input type="text" id="tickerInput" placeholder="MXRF11" value="PETR4" autocomplete="off" />
-                <button type="button" id="tickerDropdownBtn" title="Ver lista de ativos">▾</button>
-                <div class="ticker-dropdown" id="tickerDropdown"></div>
+                <input type="text" id="tickerInput" placeholder="Buscar ativo..." value="PETR4" autocomplete="off" />
+                <button type="button" id="tickerSelectBtn" title="Abrir lista completa de ativos">☰</button>
+                <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
             </div>
             <button class="btn primary" id="loadBtn">Analisar</button>
             <button class="btn ghost" id="aiBtn">IA · Leitura</button>
         </div>
     </header>
 
+    <!-- ========== MAIN ========== -->
     <main id="main">
         <div class="empty-state" id="emptyState">
             <div class="big">⌘</div>
@@ -719,7 +994,7 @@
 
     <script>
         /* =====================================================================
-               Motor de charts em Canvas nativo — zero dependência de CDN
+               MOTOR DE CHARTS EM CANVAS NATIVO
                ===================================================================== */
         const chartRegistry = {};
 
@@ -832,8 +1107,7 @@
                 ctx.strokeStyle = s.color;
                 ctx.lineWidth = s.width || 2;
                 let started = false;
-                s.data.forEach((v, i) => { if (v == null || isNaN(v)) { started = false; return; } const x = xFor(
-                        i),
+                s.data.forEach((v, i) => { if (v == null || isNaN(v)) { started = false; return; } const x = xFor(i),
                         y = yFor(v); if (!started) { ctx.moveTo(x, y);
                         started = true; } else ctx.lineTo(x, y); });
                 ctx.stroke();
@@ -932,23 +1206,8 @@
         }
 
         /* =====================================================================
-               Estado / elementos
+               DADOS E LISTAS DE ATIVOS
                ===================================================================== */
-        const els = {
-            ticker: document.getElementById('tickerInput'),
-            tickerDropdownBtn: document.getElementById('tickerDropdownBtn'),
-            tickerDropdown: document.getElementById('tickerDropdown'),
-            loadBtn: document.getElementById('loadBtn'),
-            aiBtn: document.getElementById('aiBtn'),
-            main: document.getElementById('main'),
-        };
-
-        /* ---------- Chave padrão (única, fixa) ---------- */
-        const DEFAULT_TOKEN = 'gB1igs3qAZgEVDenXbFLko';
-
-        function getToken() { return DEFAULT_TOKEN; }
-
-        /* ---------- Lista completa de ativos (dropdown) ---------- */
         const TICKER_GROUPS = [
             { label: 'Ações', items: ['PETR4', 'PETR3', 'VALE3', 'ITUB4', 'ITSA4', 'BBAS3', 'BBDC4', 'BBDC3', 'BPAC11',
                     'WEGE3', 'ABEV3', 'MGLU3', 'B3SA3', 'RENT3', 'LREN3', 'RADL3', 'RAIL3', 'SUZB3', 'GGBR4', 'CSNA3',
@@ -974,61 +1233,273 @@
             { label: 'Câmbio e Cripto', items: ['USD-BRL', 'EUR-BRL', 'BTC-BRL', 'ETH-BRL'] },
         ];
 
-        function renderTickerDropdown() {
-            els.tickerDropdown.innerHTML = TICKER_GROUPS.map(g => `
-                <div class="td-group">${g.label}</div>
-                ${g.items.map(t => `<div class="td-item" data-t="${t}">${t}</div>`).join('')}
+        function searchTickers(query) {
+            const q = query.toLowerCase().trim();
+            if (!q) return [];
+            const results = [];
+            TICKER_GROUPS.forEach(group => {
+                const matches = group.items.filter(t => t.toLowerCase().includes(q));
+                if (matches.length) {
+                    results.push({ label: group.label, items: matches });
+                }
+            });
+            return results;
+        }
+
+        function highlightMatch(text, query) {
+            const idx = text.toLowerCase().indexOf(query.toLowerCase());
+            if (idx === -1) return text;
+            return text.substring(0, idx) + '<strong>' + text.substring(idx, idx + query.length) + '</strong>' + text
+                .substring(idx + query.length);
+        }
+
+        /* =====================================================================
+               ELEMENTOS DO DOM
+               ===================================================================== */
+        const els = {
+            ticker: document.getElementById('tickerInput'),
+            tickerSelectBtn: document.getElementById('tickerSelectBtn'),
+            autocompleteDropdown: document.getElementById('autocompleteDropdown'),
+            loadBtn: document.getElementById('loadBtn'),
+            aiBtn: document.getElementById('aiBtn'),
+            main: document.getElementById('main'),
+            loadingOverlay: document.getElementById('loadingOverlay'),
+            modalOverlay: document.getElementById('tickerModalOverlay'),
+            modalSearch: document.getElementById('modalSearchInput'),
+            modalTabs: document.getElementById('modalTabs'),
+            modalGrid: document.getElementById('modalGrid'),
+            modalCloseBtn: document.getElementById('modalCloseBtn'),
+        };
+
+        /* ---------- LOADING ---------- */
+        function showLoading() {
+            els.loadingOverlay.classList.add('active');
+            els.loadBtn.disabled = true;
+            els.loadBtn.textContent = 'Carregando…';
+        }
+
+        function hideLoading() {
+            els.loadingOverlay.classList.remove('active');
+            els.loadBtn.disabled = false;
+            els.loadBtn.textContent = 'Analisar';
+        }
+
+        /* ---------- MODAL DE SELEÇÃO ---------- */
+        let activeModalTab = 0;
+
+        function buildModalTabs() {
+            els.modalTabs.innerHTML = TICKER_GROUPS.map((g, i) => `
+                <span class="ticker-modal-tab ${i === activeModalTab ? 'active' : ''}" data-idx="${i}">${g.label}</span>
               `).join('');
+            els.modalTabs.querySelectorAll('.ticker-modal-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    activeModalTab = parseInt(tab.dataset.idx);
+                    els.modalSearch.value = '';
+                    updateModalView();
+                });
+            });
         }
 
-        function toggleTickerDropdown(force) {
-            const open = force !== undefined ? force : !els.tickerDropdown.classList.contains('open');
-            els.tickerDropdown.classList.toggle('open', open);
+        function renderModalGrid(tickers, query) {
+            if (!tickers.length) {
+                els.modalGrid.innerHTML =
+                    '<div class="no-results">Nenhum ativo encontrado para esta busca.</div>';
+                return;
+            }
+            els.modalGrid.innerHTML = tickers.map(t => `
+                <span class="ticker-chip" data-ticker="${t}">${query ? highlightMatch(t, query) : t}</span>
+              `).join('');
+            els.modalGrid.querySelectorAll('.ticker-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    selectTicker(chip.dataset.ticker);
+                    closeModal();
+                });
+            });
         }
 
-        renderTickerDropdown();
-        els.tickerDropdownBtn.addEventListener('click', (e) => {
+        function renderModalGridGrouped(results, query) {
+            if (!results.length) {
+                els.modalGrid.innerHTML =
+                    '<div class="no-results">Nenhum ativo encontrado para esta busca.</div>';
+                return;
+            }
+            let html = '';
+            results.forEach(group => {
+                html +=
+                    `<div class="cat-label">${group.label} (${group.items.length})</div>`;
+                group.items.forEach(t => {
+                    html +=
+                        `<span class="ticker-chip" data-ticker="${t}">${query ? highlightMatch(t, query) : t}</span>`;
+                });
+            });
+            els.modalGrid.innerHTML = html;
+            els.modalGrid.querySelectorAll('.ticker-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    selectTicker(chip.dataset.ticker);
+                    closeModal();
+                });
+            });
+        }
+
+        function updateModalView() {
+            const query = els.modalSearch.value.trim();
+            buildModalTabs();
+            if (query) {
+                const results = searchTickers(query);
+                renderModalGridGrouped(results, query);
+            } else {
+                const group = TICKER_GROUPS[activeModalTab];
+                renderModalGrid(group.items, '');
+            }
+        }
+
+        function openModal() {
+            activeModalTab = 0;
+            els.modalSearch.value = '';
+            els.modalOverlay.classList.add('active');
+            updateModalView();
+            setTimeout(() => els.modalSearch.focus(), 150);
+        }
+
+        function closeModal() {
+            els.modalOverlay.classList.remove('active');
+        }
+
+        function selectTicker(ticker) {
+            els.ticker.value = ticker;
+            els.autocompleteDropdown.classList.remove('open');
+        }
+
+        /* ---------- AUTOCOMPLETE ---------- */
+        function renderAutocomplete(query) {
+            const results = searchTickers(query);
+            if (!results.length) {
+                els.autocompleteDropdown.innerHTML =
+                    '<div class="ac-empty">Nenhum ativo encontrado</div>';
+                return;
+            }
+            let html = '';
+            results.forEach(group => {
+                html +=
+                    `<div class="ac-group-label">${group.label}</div>`;
+                group.items.forEach(t => {
+                    html +=
+                        `<div class="ac-item" data-ticker="${t}">${highlightMatch(t, query)}</div>`;
+                });
+            });
+            els.autocompleteDropdown.innerHTML = html;
+            els.autocompleteDropdown.querySelectorAll('.ac-item').forEach(item => {
+                item.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    selectTicker(item.dataset.ticker);
+                });
+            });
+        }
+
+        let autocompleteIndex = -1;
+
+        function updateAutocompleteActive() {
+            const items = els.autocompleteDropdown.querySelectorAll('.ac-item');
+            items.forEach((item, i) => item.classList.toggle('active', i === autocompleteIndex));
+            if (autocompleteIndex >= 0 && items[autocompleteIndex]) {
+                items[autocompleteIndex].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function openAutocomplete() {
+            const query = els.ticker.value.trim();
+            if (!query) {
+                els.autocompleteDropdown.classList.remove('open');
+                return;
+            }
+            renderAutocomplete(query);
+            els.autocompleteDropdown.classList.add('open');
+            autocompleteIndex = -1;
+        }
+
+        function closeAutocomplete() {
+            els.autocompleteDropdown.classList.remove('open');
+            autocompleteIndex = -1;
+        }
+
+        /* ---------- EVENT LISTENERS: MODAL ---------- */
+        els.tickerSelectBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            toggleTickerDropdown();
+            closeAutocomplete();
+            openModal();
         });
-        els.tickerDropdown.addEventListener('click', (e) => {
-            const item = e.target.closest('.td-item');
-            if (!item) return;
-            els.ticker.value = item.dataset.t;
-            toggleTickerDropdown(false);
+        els.modalCloseBtn.addEventListener('click', closeModal);
+        els.modalOverlay.addEventListener('click', (e) => {
+            if (e.target === els.modalOverlay) closeModal();
+        });
+        els.modalSearch.addEventListener('input', () => {
+            activeModalTab = -1;
+            updateModalView();
+        });
+        els.modalSearch.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && els.modalOverlay.classList.contains('active')) {
+                closeModal();
+            }
+        });
+
+        /* ---------- EVENT LISTENERS: AUTOCOMPLETE ---------- */
+        els.ticker.addEventListener('input', () => {
+            openAutocomplete();
+        });
+        els.ticker.addEventListener('focus', () => {
+            if (els.ticker.value.trim()) openAutocomplete();
+        });
+        els.ticker.addEventListener('keydown', (e) => {
+            const items = els.autocompleteDropdown.querySelectorAll('.ac-item');
+            if (!els.autocompleteDropdown.classList.contains('open')) {
+                if (e.key === 'Enter') {
+                    document.getElementById('loadBtn').click();
+                }
+                return;
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                autocompleteIndex = Math.min(autocompleteIndex + 1, items.length - 1);
+                updateAutocompleteActive();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                autocompleteIndex = Math.max(autocompleteIndex - 1, -1);
+                updateAutocompleteActive();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (autocompleteIndex >= 0 && items[autocompleteIndex]) {
+                    selectTicker(items[autocompleteIndex].dataset.ticker);
+                }
+                closeAutocomplete();
+                document.getElementById('loadBtn').click();
+            } else if (e.key === 'Escape') {
+                closeAutocomplete();
+            }
+        });
+        els.ticker.addEventListener('blur', () => {
+            setTimeout(closeAutocomplete, 150);
+        });
+        els.autocompleteDropdown.addEventListener('mousedown', (e) => {
+            e.preventDefault();
         });
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.ticker-wrap')) toggleTickerDropdown(false);
+            if (!e.target.closest('.ticker-wrap') && !e.target.closest('.ticker-modal-overlay')) {
+                closeAutocomplete();
+            }
         });
 
-        function fmtBRL(v, dec = 2) { if (v === null || v === undefined || isNaN(v)) return '—'; return Number(v)
-                .toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
+        /* =====================================================================
+               TOKEN E API
+               ===================================================================== */
+        const DEFAULT_TOKEN = 'gB1igs3qAZgEVDenXbFLko';
 
-        function fmtPct(v, dec = 2) { if (v === null || v === undefined || isNaN(v)) return '—'; return (v > 0 ? '+' :
-                '') + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }) +
-            '%'; }
-
-        function fmtCompactBRL(v) {
-            if (v === null || v === undefined || isNaN(v)) return '—';
-            const abs = Math.abs(v);
-            if (abs >= 1e9) return 'R$ ' + (v / 1e9).toFixed(2) + 'B';
-            if (abs >= 1e6) return 'R$ ' + (v / 1e6).toFixed(2) + 'M';
-            if (abs >= 1e3) return 'R$ ' + (v / 1e3).toFixed(1) + 'K';
-            return 'R$ ' + fmtBRL(v);
-        }
-
-        function fmtCompactNum(v) {
-            if (v === null || v === undefined || isNaN(v)) return '—';
-            const abs = Math.abs(v);
-            if (abs >= 1e9) return (v / 1e9).toFixed(2) + 'B';
-            if (abs >= 1e6) return (v / 1e6).toFixed(2) + 'M';
-            if (abs >= 1e3) return (v / 1e3).toFixed(1) + 'K';
-            return fmtBRL(v, 0);
-        }
+        function getToken() { return DEFAULT_TOKEN; }
 
         function isFII(ticker) { return /11$/.test(ticker); }
 
-        /* ---------- API v2 (brapi.dev) ---------- */
         async function apiGet(path, params, token) {
             const qs = new URLSearchParams(params).toString();
             const url = `https://brapi.dev/api${path}?${qs}`;
@@ -1067,7 +1538,35 @@
             return isNaN(d) ? null : d;
         }
 
-        /* ---------- Layout ---------- */
+        /* ---------- FORMATADORES ---------- */
+        function fmtBRL(v, dec = 2) { if (v === null || v === undefined || isNaN(v)) return '—'; return Number(v)
+                .toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
+
+        function fmtPct(v, dec = 2) { if (v === null || v === undefined || isNaN(v)) return '—'; return (v > 0 ? '+' :
+                '') + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }) +
+            '%'; }
+
+        function fmtCompactBRL(v) {
+            if (v === null || v === undefined || isNaN(v)) return '—';
+            const abs = Math.abs(v);
+            if (abs >= 1e9) return 'R$ ' + (v / 1e9).toFixed(2) + 'B';
+            if (abs >= 1e6) return 'R$ ' + (v / 1e6).toFixed(2) + 'M';
+            if (abs >= 1e3) return 'R$ ' + (v / 1e3).toFixed(1) + 'K';
+            return 'R$ ' + fmtBRL(v);
+        }
+
+        function fmtCompactNum(v) {
+            if (v === null || v === undefined || isNaN(v)) return '—';
+            const abs = Math.abs(v);
+            if (abs >= 1e9) return (v / 1e9).toFixed(2) + 'B';
+            if (abs >= 1e6) return (v / 1e6).toFixed(2) + 'M';
+            if (abs >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+            return fmtBRL(v, 0);
+        }
+
+        function monthKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+
+        /* ---------- LAYOUT ---------- */
         function buildLayout() {
             els.main.innerHTML = `
                 <div id="errBox"></div>
@@ -1268,11 +1767,9 @@
             const vols = hist.map(h => h.volume || 0);
             registerChart('chartVol', (ctx, w, h) => {
                 drawBarChart(ctx, w, h, { labels, data: vols, color: '#1e3a4a', yTickFmt: v => fmtCompactNum(
-                        v) });
+                    v) });
             });
         }
-
-        function monthKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
 
         function renderDivChart(divs) {
             if (!divs || !divs.length) return null;
@@ -1305,7 +1802,7 @@
             });
         }
 
-        /* ---------- Carregar dados ---------- */
+        /* ---------- CARREGAR DADOS ---------- */
         let currentData = null;
         let debugLog = {};
         let lastHistNorm = [];
@@ -1319,8 +1816,7 @@
             const fii = isFII(ticker);
             debugLog = {};
 
-            els.loadBtn.textContent = 'Carregando…';
-            els.loadBtn.disabled = true;
+            showLoading();
             buildLayout();
             const errBox = document.getElementById('errBox');
 
@@ -1331,7 +1827,7 @@
                 if (!q || !q.regularMarketPrice) {
                     throw new Error(
                         'A API respondeu mas sem regularMarketPrice — veja "debug" no rodapé para checar os campos reais.'
-                        );
+                    );
                 }
                 currentData = { ticker, quote: q };
 
@@ -1356,7 +1852,8 @@
                     renderCumChart(histNorm);
                     renderVolChart(histNorm);
                 } else {
-                    sectionError('secPrice', debugLog.historical_error || 'Histórico veio vazio para este ticker/plano.');
+                    sectionError('secPrice', debugLog.historical_error ||
+                        'Histórico veio vazio para este ticker/plano.');
                     sectionError('secCum', 'Sem histórico.');
                     sectionError('secVol', 'Sem histórico.');
                 }
@@ -1408,13 +1905,12 @@
                 currentData = null;
             } finally {
                 document.getElementById('debugPre').textContent = JSON.stringify(debugLog, null, 2);
-                els.loadBtn.textContent = 'Analisar';
-                els.loadBtn.disabled = false;
+                hideLoading();
             }
         }
 
         /* =====================================================================
-               MOTOR DE ANÁLISE LOCAL (sempre disponível, sem rede)
+               MOTOR DE ANÁLISE LOCAL
                ===================================================================== */
         function buildLocalAnalysis() {
             const q = currentData.quote;
@@ -1437,7 +1933,8 @@
                 const distLow = (low52 && last) ? ((last - low52) / low52 * 100) : null;
                 let trendLabel = Math.abs(totalPct) < 6 ? 'lateralizado, sem direção clara' : (totalPct > 0 ?
                     'em tendência de alta' : 'em tendência de baixa');
-                let txt = `${ticker} está ${trendLabel} no período de 1 ano, com variação acumulada de ${fmtPct(totalPct)}.`;
+                let txt =
+                    `${ticker} está ${trendLabel} no período de 1 ano, com variação acumulada de ${fmtPct(totalPct)}.`;
                 if (pct30 !== null) txt += ` Nos últimos 30 pregões, a variação foi de ${fmtPct(pct30)}.`;
                 if (distHigh !== null) txt +=
                     ` O preço atual está ${Math.abs(distHigh).toFixed(1)}% ${distHigh < 0 ? 'abaixo' : 'acima'} da máxima de 52 semanas`;
@@ -1541,7 +2038,7 @@
             out.innerHTML = tag + html;
         }
 
-        /* ---------- IA (tenta Claude real; fallback local) ---------- */
+        /* ---------- IA ---------- */
         async function runAI() {
             if (!currentData) {
                 alert('Carregue um ativo primeiro clicando em "Analisar".');
@@ -1589,12 +2086,16 @@
             }
         }
 
-        /* ---------- Event listeners ---------- */
+        /* ---------- EVENT LISTENERS ---------- */
         els.loadBtn.addEventListener('click', loadData);
         els.aiBtn.addEventListener('click', runAI);
-        els.ticker.addEventListener('keydown', e => { if (e.key === 'Enter') loadData(); });
+        els.ticker.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !els.autocompleteDropdown.classList.contains('open')) {
+                loadData();
+            }
+        });
 
-        /* ---------- Inicialização ---------- */
+        /* ---------- INICIALIZAÇÃO ---------- */
         window.addEventListener('DOMContentLoaded', () => {
             if (location.protocol === 'file:') {
                 document.getElementById('main').innerHTML = `
@@ -1612,4 +2113,4 @@
         });
     </script>
 </body>
-</html
+</html>
