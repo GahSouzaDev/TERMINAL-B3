@@ -1,1175 +1,1615 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TERMINAL // Análise de FIIs e Ações</title>
-<style>
-/* ===================================================================
-   Sem fontes externas de propósito — CDN de fonte foi um dos pontos
-   de falha do arquivo original. Stack nativa: sempre carrega, sempre
-   parece intencional, sem depender de rede.
-   =================================================================== */
-:root{
-  --bg:#050707;
-  --bg-2:#0a0d0d;
-  --panel:#0e1313;
-  --panel-2:#131a1a;
-  --line:#1f2b2a;
-  --line-soft:#161e1e;
-  --text:#eef2f0;
-  --muted:#7f948e;
-  --muted-2:#465350;
-  --amber:#ffa227;
-  --amber-dim:#c67d1c;
-  --mint:#25d9a0;
-  --crimson:#ff5468;
-  --gold:#d8b25c;
-  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-  --mono:ui-monospace,'SF Mono','Cascadia Code','Roboto Mono','JetBrains Mono',Consolas,monospace;
-  --radius:8px;
-}
-*{margin:0;padding:0;box-sizing:border-box;}
-html,body{background:var(--bg);color:var(--text);font-family:var(--sans);}
-body{min-height:100vh;-webkit-font-smoothing:antialiased;}
-::selection{background:var(--amber);color:#0a0c10;}
-::-webkit-scrollbar{width:8px;height:8px;}
-::-webkit-scrollbar-track{background:var(--bg);}
-::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
-button,input,select{font-family:inherit;}
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>B3 ANALYTICS // Análise de FIIs e Ações</title>
+    <style>
+        /* ===================================================================
+               Banking‑grade design — escuro, limpo, tipografia profissional.
+               =================================================================== */
+        :root {
+            --bg: #080c14;
+            --bg-2: #0d1320;
+            --panel: #111a2a;
+            --panel-2: #162033;
+            --panel-3: #1a2640;
+            --line: #1e2d48;
+            --line-soft: #142033;
+            --text: #eef2f6;
+            --muted: #7a8ba8;
+            --muted-2: #3f526f;
+            --gold: #d4a043;
+            --gold-dim: #b8852e;
+            --gold-glow: rgba(212, 160, 67, 0.15);
+            --mint: #2dd4a0;
+            --crimson: #f05a6a;
+            --blue-accent: #3b7dd8;
+            --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Roboto Mono', ui-monospace, monospace;
+            --radius: 10px;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+        }
 
-/* ---------- HEADER ---------- */
-header{
-  position:sticky;top:0;z-index:20;
-  padding:16px 26px;
-  border-bottom:1px solid var(--line);
-  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;
-  background:rgba(6,9,9,0.92);
-  backdrop-filter:blur(10px);
-}
-.brand{display:flex;align-items:baseline;gap:10px;}
-.brand .mark{
-  width:9px;height:9px;border-radius:2px;background:var(--amber);
-  box-shadow:0 0 12px var(--amber);
-}
-.brand .name{font-family:var(--mono);font-weight:700;font-size:15px;letter-spacing:0.5px;}
-.brand .name b{color:var(--amber);}
-.brand .tag{font-family:var(--mono);font-size:10.5px;color:var(--muted-2);letter-spacing:1px;text-transform:uppercase;padding-left:4px;border-left:1px solid var(--line);margin-left:2px;}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html,
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body {
+            min-height: 100vh;
+        }
+        ::selection {
+            background: var(--gold);
+            color: #0a0e17;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--line);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gold-dim);
+        }
 
-.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-.controls input,.controls select{
-  background:var(--panel);border:1px solid var(--line);color:var(--text);
-  font-family:var(--mono);font-size:13px;font-weight:600;padding:10px 12px;border-radius:6px;outline:none;
-  transition:border-color .15s,box-shadow .15s;
-}
-.controls input::placeholder{color:var(--muted-2);font-weight:400;}
-.controls input:focus,.controls select:focus{border-color:var(--amber-dim);box-shadow:0 0 0 3px rgba(255,162,39,0.12);}
-#tickerInput{width:118px;text-transform:uppercase;letter-spacing:.5px;}
-.ticker-wrap{position:relative;display:flex;}
-.ticker-wrap input{border-top-right-radius:0;border-bottom-right-radius:0;border-right:none;}
-#tickerDropdownBtn{
-  background:var(--panel);border:1px solid var(--line);border-left:none;color:var(--muted);
-  border-top-right-radius:6px;border-bottom-right-radius:6px;padding:0 10px;cursor:pointer;font-size:11px;
-}
-#tickerDropdownBtn:hover{color:var(--amber);border-color:var(--amber-dim);}
-.ticker-dropdown{
-  display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:50;
-  width:260px;max-height:340px;overflow-y:auto;
-  background:var(--panel);border:1px solid var(--line);border-radius:8px;
-  box-shadow:0 12px 32px rgba(0,0,0,.5);padding:6px;
-}
-.ticker-dropdown.open{display:block;}
-.ticker-dropdown .td-group{font-family:var(--mono);font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.6px;padding:8px 8px 4px;}
-.ticker-dropdown .td-item{font-family:var(--mono);font-size:12.5px;padding:7px 10px;border-radius:5px;cursor:pointer;color:var(--text);}
-.ticker-dropdown .td-item:hover{background:var(--panel-2);color:var(--amber);}
-#tokenSelect{max-width:150px;cursor:pointer;}
-.btn{
-  background:var(--amber);color:#161006;border:none;
-  font-family:var(--sans);font-weight:700;font-size:13px;padding:10px 18px;border-radius:6px;cursor:pointer;
-  letter-spacing:.2px;transition:filter .15s,transform .1s;
-}
-.btn:hover{filter:brightness(1.1);}
-.btn:active{transform:scale(.97);}
-.btn:disabled{opacity:.5;cursor:not-allowed;}
-.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line);}
-.btn.ghost:hover{border-color:var(--amber-dim);color:var(--amber);}
+        button,
+        input,
+        select {
+            font-family: inherit;
+        }
 
-main{padding:22px 26px 60px;max-width:1560px;margin:0 auto;}
+        /* ---------- HEADER (banking style) ---------- */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            padding: 14px 28px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            background: rgba(8, 12, 20, 0.94);
+            backdrop-filter: blur(12px);
+        }
+        .brand {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+        }
+        .brand .mark {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            background: var(--gold);
+            box-shadow: 0 0 16px var(--gold-glow);
+        }
+        .brand .name {
+            font-family: var(--mono);
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 0.3px;
+            color: var(--text);
+        }
+        .brand .name b {
+            color: var(--gold);
+        }
+        .brand .tag {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted-2);
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            padding-left: 8px;
+            border-left: 1px solid var(--line);
+        }
 
-/* ---------- HERO ---------- */
-.hero-row{
-  display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1fr 1fr;gap:1px;
-  background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:20px;
-}
-.hero-cell{background:var(--panel);padding:14px 18px 12px;display:flex;flex-direction:column;gap:5px;justify-content:center;}
-.hero-cell .label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1.1px;text-transform:uppercase;}
-.hero-cell .value{font-family:var(--mono);font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;}
-.hero-cell.main .value{font-size:31px;color:var(--text);}
-.hero-cell .sub{font-family:var(--mono);font-size:11.5px;font-weight:600;}
-.up{color:var(--mint)!important;}
-.down{color:var(--crimson)!important;}
-.hero-spark{width:100%;height:32px;margin-top:2px;display:block;}
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .controls input {
+            background: var(--bg-2);
+            border: 1px solid var(--line);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 10px 14px;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+            min-width: 120px;
+        }
+        .controls input::placeholder {
+            color: var(--muted-2);
+            font-weight: 400;
+        }
+        .controls input:focus {
+            border-color: var(--gold-dim);
+            box-shadow: 0 0 0 3px var(--gold-glow);
+        }
+        .ticker-wrap {
+            position: relative;
+            display: flex;
+        }
+        .ticker-wrap input {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            border-right: none;
+            min-width: 110px;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+        }
+        #tickerDropdownBtn {
+            background: var(--bg-2);
+            border: 1px solid var(--line);
+            border-left: none;
+            color: var(--muted);
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+            padding: 0 14px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: color .2s, border-color .2s;
+        }
+        #tickerDropdownBtn:hover {
+            color: var(--gold);
+            border-color: var(--gold-dim);
+        }
 
-/* ---------- GRID / CARDS ---------- */
-.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;}
-.card{
-  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-  padding:16px 18px;display:flex;flex-direction:column;min-width:0;
-}
-.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap;}
-.card h3{
-  font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
-  color:var(--text);display:flex;align-items:center;gap:8px;
-}
-.card h3::before{content:'';width:3px;height:13px;background:var(--amber);border-radius:1px;display:inline-block;}
-.legend{display:flex;gap:12px;font-family:var(--mono);font-size:10px;color:var(--muted);}
-.legend span{display:flex;align-items:center;gap:5px;}
-.legend i{width:9px;height:2px;display:inline-block;border-radius:1px;}
+        .ticker-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            z-index: 50;
+            width: 300px;
+            max-height: 420px;
+            overflow-y: auto;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            padding: 8px;
+        }
+        .ticker-dropdown.open {
+            display: block;
+        }
+        .ticker-dropdown .td-group {
+            font-family: var(--mono);
+            font-size: 9.5px;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            padding: 10px 10px 4px;
+            border-bottom: 1px solid var(--line-soft);
+            margin-bottom: 4px;
+        }
+        .ticker-dropdown .td-group:not(:first-child) {
+            margin-top: 6px;
+        }
+        .ticker-dropdown .td-item {
+            font-family: var(--mono);
+            font-size: 12.5px;
+            padding: 7px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text);
+            transition: background .12s, color .12s;
+        }
+        .ticker-dropdown .td-item:hover {
+            background: var(--panel-2);
+            color: var(--gold);
+        }
 
-.span-8{grid-column:span 8;} .span-4{grid-column:span 4;}
-.span-6{grid-column:span 6;} .span-12{grid-column:span 12;}
-.chart-box{position:relative;height:260px;}
-.chart-box.short{height:180px;}
-canvas{display:block;width:100%;height:100%;}
+        .btn {
+            background: var(--gold);
+            color: #0a0e17;
+            border: none;
+            font-family: var(--sans);
+            font-weight: 700;
+            font-size: 13px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            letter-spacing: .2px;
+            transition: filter .15s, transform .1s, box-shadow .15s;
+        }
+        .btn:hover {
+            filter: brightness(1.08);
+            box-shadow: 0 0 20px var(--gold-glow);
+        }
+        .btn:active {
+            transform: scale(.97);
+        }
+        .btn:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .btn.ghost {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--line);
+            box-shadow: none;
+        }
+        .btn.ghost:hover {
+            border-color: var(--gold-dim);
+            color: var(--gold);
+            box-shadow: none;
+        }
+        .btn.ghost:active {
+            transform: scale(.97);
+        }
+        .btn.primary {
+            background: var(--gold);
+        }
 
-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;}
-table th{text-align:left;color:var(--muted);font-weight:600;padding:7px 8px;border-bottom:1px solid var(--line);font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
-table td{padding:7px 8px;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums;}
-table tr:last-child td{border-bottom:none;}
-table tr:hover td{background:var(--panel-2);}
+        main {
+            padding: 24px 28px 60px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
 
-.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 16px;}
-.stat-item{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--line);}
-.stat-item .k{font-family:var(--mono);font-size:11px;color:var(--muted);}
-.stat-item .v{font-family:var(--mono);font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;}
+        /* ---------- HERO (banking metrics) ---------- */
+        .hero-row {
+            display: grid;
+            grid-template-columns: 1.8fr 1fr 1fr 1fr 1fr 1fr;
+            gap: 1px;
+            background: var(--line);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 22px;
+        }
+        .hero-cell {
+            background: var(--panel);
+            padding: 16px 20px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            justify-content: center;
+        }
+        .hero-cell .label {
+            font-family: var(--mono);
+            font-size: 9.5px;
+            color: var(--muted);
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+        }
+        .hero-cell .value {
+            font-family: var(--mono);
+            font-size: 19px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.2px;
+        }
+        .hero-cell.main .value {
+            font-size: 32px;
+            color: var(--text);
+        }
+        .hero-cell .sub {
+            font-family: var(--mono);
+            font-size: 11.5px;
+            font-weight: 600;
+        }
+        .up {
+            color: var(--mint) !important;
+        }
+        .down {
+            color: var(--crimson) !important;
+        }
+        .hero-spark {
+            width: 100%;
+            height: 32px;
+            margin-top: 2px;
+            display: block;
+        }
 
-/* ---------- AI PANEL ---------- */
-.ai-panel{background:linear-gradient(160deg,#12140f,#0e1313);border:1px solid var(--amber-dim);}
-.ai-panel h3::before{background:var(--amber);}
-.ai-source{
-  display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;
-  padding:3px 8px;border-radius:4px;margin-bottom:10px;
-}
-.ai-source.local{background:rgba(255,162,39,0.12);color:var(--amber);border:1px solid rgba(255,162,39,0.3);}
-.ai-source.remote{background:rgba(37,217,160,0.12);color:var(--mint);border:1px solid rgba(37,217,160,0.3);}
-.ai-output{font-family:var(--sans);font-size:14px;line-height:1.7;color:#dbe4e0;white-space:pre-wrap;}
-.ai-output strong{color:var(--amber);}
-.ai-loading{font-family:var(--mono);font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:10px;}
-.dot{width:6px;height:6px;background:var(--amber);border-radius:50%;animation:pulse 1s infinite ease-in-out;}
-.dot:nth-child(2){animation-delay:.15s;} .dot:nth-child(3){animation-delay:.3s;}
-@keyframes pulse{0%,100%{opacity:.25;}50%{opacity:1;}}
+        /* ---------- GRID ---------- */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px;
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 18px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            transition: border-color .2s;
+        }
+        .card:hover {
+            border-color: var(--line-soft);
+        }
+        .card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .card h3 {
+            font-family: var(--mono);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card h3::before {
+            content: '';
+            width: 3px;
+            height: 14px;
+            background: var(--gold);
+            border-radius: 2px;
+            display: inline-block;
+        }
+        .legend {
+            display: flex;
+            gap: 14px;
+            font-family: var(--mono);
+            font-size: 9.5px;
+            color: var(--muted);
+        }
+        .legend span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend i {
+            width: 10px;
+            height: 2px;
+            display: inline-block;
+            border-radius: 1px;
+        }
 
-.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:110px 20px;text-align:center;gap:14px;color:var(--muted);}
-.empty-state .big{font-family:var(--mono);font-size:44px;color:var(--line);font-weight:800;}
-.empty-state p{max-width:440px;font-size:13.5px;line-height:1.6;}
+        .span-8 {
+            grid-column: span 8;
+        }
+        .span-4 {
+            grid-column: span 4;
+        }
+        .span-6 {
+            grid-column: span 6;
+        }
+        .span-12 {
+            grid-column: span 12;
+        }
 
-.error-banner{background:#241014;border:1px solid var(--crimson);color:#ffb3bd;padding:12px 16px;border-radius:8px;font-family:var(--mono);font-size:12.5px;margin-bottom:16px;line-height:1.6;}
-.mini-error{color:var(--crimson);font-family:var(--mono);font-size:12px;padding:8px 0;}
+        .chart-box {
+            position: relative;
+            height: 260px;
+        }
+        .chart-box.short {
+            height: 180px;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
 
-/* ---------- SETTINGS MODAL ---------- */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(3,4,4,.75);backdrop-filter:blur(3px);z-index:100;align-items:center;justify-content:center;}
-.modal-overlay.open{display:flex;}
-.modal{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;width:min(430px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.6);}
-.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-.modal-head h3{font-family:var(--mono);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;}
-.modal-close{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;}
-.modal-close:hover{color:var(--text);}
-.modal-label{font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;display:block;margin-bottom:8px;}
-.modal-input{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:13px;padding:11px 12px;border-radius:6px;outline:none;margin-bottom:10px;}
-.modal-input:focus{border-color:var(--amber-dim);}
-.modal-status{font-family:var(--mono);font-size:11.5px;color:var(--mint);min-height:16px;margin-bottom:12px;}
-.modal-status.err{color:var(--crimson);}
-.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-bottom:14px;}
-.modal-hint{font-family:var(--mono);font-size:10px;color:var(--muted-2);line-height:1.6;}
-.modal-hint a{color:var(--amber-dim);}
+        /* ---------- TABLES (banking clean) ---------- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--mono);
+            font-size: 12px;
+        }
+        table th {
+            text-align: left;
+            color: var(--muted);
+            font-weight: 600;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--line);
+            font-size: 9.5px;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+        }
+        table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--line-soft);
+            font-variant-numeric: tabular-nums;
+        }
+        table tr:last-child td {
+            border-bottom: none;
+        }
+        table tr:hover td {
+            background: var(--panel-2);
+        }
 
-.debug-panel{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;}
-.debug-panel summary{cursor:pointer;font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.5px;}
-.debug-panel pre{font-family:var(--mono);font-size:10px;color:var(--muted-2);white-space:pre-wrap;word-break:break-all;max-height:400px;overflow:auto;padding-top:10px;}
+        /* ---------- STATS ---------- */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 18px;
+        }
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 7px 0;
+            border-bottom: 1px dashed var(--line-soft);
+        }
+        .stat-item .k {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            color: var(--muted);
+        }
+        .stat-item .v {
+            font-family: var(--mono);
+            font-size: 12.5px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
 
-footer{padding:20px 26px 40px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted-2);letter-spacing:.5px;}
+        /* ---------- AI PANEL (banking insight) ---------- */
+        .ai-panel {
+            background: linear-gradient(145deg, #0f172a, #111a2a);
+            border: 1px solid var(--gold-dim);
+            box-shadow: inset 0 1px 0 rgba(212, 160, 67, 0.05);
+        }
+        .ai-panel h3::before {
+            background: var(--gold);
+        }
+        .ai-source {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .ai-source.local {
+            background: rgba(212, 160, 67, 0.12);
+            color: var(--gold);
+            border: 1px solid rgba(212, 160, 67, 0.25);
+        }
+        .ai-source.remote {
+            background: rgba(45, 212, 160, 0.12);
+            color: var(--mint);
+            border: 1px solid rgba(45, 212, 160, 0.25);
+        }
+        .ai-output {
+            font-family: var(--sans);
+            font-size: 14px;
+            line-height: 1.75;
+            color: #d8e0ea;
+            white-space: pre-wrap;
+        }
+        .ai-output strong {
+            color: var(--gold);
+        }
+        .ai-output p {
+            margin-top: 10px;
+        }
+        .ai-output p:first-child {
+            margin-top: 0;
+        }
+        .ai-loading {
+            font-family: var(--mono);
+            font-size: 12.5px;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--gold);
+            border-radius: 50%;
+            animation: pulse 1s infinite ease-in-out;
+        }
+        .dot:nth-child(2) {
+            animation-delay: .15s;
+        }
+        .dot:nth-child(3) {
+            animation-delay: .3s;
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: .2;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
 
-@media(max-width:1100px){.hero-row{grid-template-columns:repeat(3,1fr);} .span-8,.span-6,.span-4{grid-column:span 12;}}
-@media(max-width:640px){.hero-row{grid-template-columns:repeat(2,1fr);}header{padding:14px;}main{padding:14px;}}
-</style>
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 120px 20px;
+            text-align: center;
+            gap: 16px;
+            color: var(--muted);
+        }
+        .empty-state .big {
+            font-family: var(--mono);
+            font-size: 48px;
+            color: var(--line);
+            font-weight: 800;
+            letter-spacing: 2px;
+        }
+        .empty-state p {
+            max-width: 460px;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+        .empty-state p strong {
+            color: var(--gold);
+        }
+
+        .error-banner {
+            background: #1e0e14;
+            border: 1px solid var(--crimson);
+            color: #f5b3be;
+            padding: 14px 18px;
+            border-radius: 10px;
+            font-family: var(--mono);
+            font-size: 12.5px;
+            margin-bottom: 18px;
+            line-height: 1.7;
+        }
+        .mini-error {
+            color: var(--crimson);
+            font-family: var(--mono);
+            font-size: 12px;
+            padding: 8px 0;
+        }
+
+        /* ---------- DEBUG ---------- */
+        .debug-panel {
+            margin-top: 14px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px 16px;
+        }
+        .debug-panel summary {
+            cursor: pointer;
+            font-family: var(--mono);
+            font-size: 10.5px;
+            color: var(--muted);
+            letter-spacing: .5px;
+        }
+        .debug-panel summary:hover {
+            color: var(--text);
+        }
+        .debug-panel pre {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted-2);
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 400px;
+            overflow: auto;
+            padding-top: 12px;
+            border-top: 1px solid var(--line-soft);
+            margin-top: 10px;
+        }
+
+        footer {
+            padding: 24px 28px 40px;
+            text-align: center;
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted-2);
+            letter-spacing: .5px;
+            border-top: 1px solid var(--line-soft);
+            margin-top: 20px;
+        }
+
+        /* ---------- RESPONSIVE ---------- */
+        @media (max-width: 1100px) {
+            .hero-row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .span-8,
+            .span-6,
+            .span-4 {
+                grid-column: span 12;
+            }
+        }
+        @media (max-width: 640px) {
+            .hero-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            header {
+                padding: 12px 16px;
+            }
+            main {
+                padding: 14px 14px 40px;
+            }
+            .controls input {
+                min-width: 80px;
+                font-size: 12px;
+                padding: 8px 10px;
+            }
+            .btn {
+                font-size: 12px;
+                padding: 8px 14px;
+            }
+            .ticker-dropdown {
+                width: 260px;
+                left: -40px;
+            }
+            .card {
+                padding: 14px 14px 16px;
+            }
+        }
+
+        /* ---------- KEYFRAMES ---------- */
+        @keyframes fadeSlide {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .card {
+            animation: fadeSlide .3s ease-out;
+        }
+        .hero-cell {
+            animation: fadeSlide .25s ease-out;
+        }
+    </style>
 </head>
 <body>
 
-<header>
-  <div class="brand">
-    <span class="mark"></span>
-    <span class="name">TERMINAL<b>://</b>B3</span>
-    <span class="tag">brapi.dev</span>
-  </div>
-  <div class="controls">
-    <div class="ticker-wrap">
-      <input type="text" id="tickerInput" placeholder="MXRF11" value="PETR4" list="tickerSuggestions" autocomplete="off">
-      <button type="button" id="tickerDropdownBtn" title="Ver lista de ativos">▾</button>
-      <div class="ticker-dropdown" id="tickerDropdown"></div>
-    </div>
-    <datalist id="tickerSuggestions">
-      <option value="PETR4"><option value="PETR3"><option value="VALE3">
-      <option value="ITUB4"><option value="ITSA4"><option value="BBAS3">
-      <option value="BBDC4"><option value="BBDC3"><option value="BPAC11">
-      <option value="WEGE3"><option value="ABEV3"><option value="MGLU3">
-      <option value="B3SA3"><option value="RENT3"><option value="LREN3">
-      <option value="RADL3"><option value="RAIL3"><option value="SUZB3">
-      <option value="GGBR4"><option value="CSNA3"><option value="USIM5">
-      <option value="CSAN3"><option value="PRIO3"><option value="UGPA3">
-      <option value="EQTL3"><option value="ELET3"><option value="ELET6">
-      <option value="CMIG4"><option value="CPFE3"><option value="ENGI11">
-      <option value="TAEE11"><option value="EGIE3"><option value="AURE3">
-      <option value="JBSS3"><option value="BRFS3"><option value="MRFG3">
-      <option value="BEEF3"><option value="SLCE3"><option value="SMTO3">
-      <option value="CYRE3"><option value="MRVE3"><option value="EZTC3">
-      <option value="TOTS3"><option value="LWSA3"><option value="POSI3">
-      <option value="HAPV3"><option value="RDOR3"><option value="FLRY3">
-      <option value="QUAL3"><option value="COGN3"><option value="YDUQ3">
-      <option value="ASAI3"><option value="CRFB3"><option value="PCAR3">
-      <option value="AZUL4"><option value="GOLL4"><option value="EMBR3">
-      <option value="CCRO3"><option value="ECOR3"><option value="VIVT3">
-      <option value="TIMS3"><option value="SBSP3"><option value="SAPR11">
-      <option value="CPLE6"><option value="NTCO3"><option value="ARZZ3">
-      <option value="SOMA3"><option value="ALPA4"><option value="VAMO3">
-      <option value="MOVI3"><option value="MULT3"><option value="IGTI11">
-      <option value="BRAP4"><option value="BRKM5"><option value="KLBN11">
-      <option value="DXCO3"><option value="GMAT3"><option value="PETZ3">
-      <option value="ANIM3"><option value="CVCB3"><option value="STBP3">
-
-      <!-- Fundos Imobiliários (FIIs) -->
-      <option value="MXRF11"><option value="HGLG11"><option value="KNRI11">
-      <option value="XPLG11"><option value="VISC11"><option value="BCFF11">
-      <option value="HGRU11"><option value="BTLG11"><option value="VGHF11">
-      <option value="RECR11"><option value="KNIP11"><option value="IRDM11">
-      <option value="XPML11"><option value="HGRE11"><option value="VILG11">
-      <option value="KNCR11"><option value="RBRF11"><option value="MCCI11">
-      <option value="RBRR11"><option value="HFOF11"><option value="RZTR11">
-      <option value="ALZR11"><option value="BRCO11"><option value="GGRC11">
-      <option value="VRTA11"><option value="HGBS11"><option value="TGAR11">
-      <option value="XPCI11"><option value="CPTS11"><option value="MFII11">
-      <option value="PVBI11"><option value="LVBI11"><option value="BTCI11">
-
-      <!-- BDRs -->
-      <option value="AAPL34"><option value="GOOGL34"><option value="AMZO34">
-      <option value="MSFT34"><option value="TSLA34"><option value="NVDC34">
-      <option value="META34"><option value="NFLX34"><option value="DISB34">
-      <option value="JPMC34"><option value="BABA34"><option value="AMD34">
-
-      <!-- ETFs -->
-      <option value="BOVA11"><option value="IVVB11"><option value="SMAL11">
-      <option value="HASH11"><option value="BOVV11"><option value="DIVO11">
-      <option value="GOLD11"><option value="FIND11"><option value="BBSD11">
-      <option value="XFIX11"><option value="ISUS11">
-
-      <!-- Índices (referência — endpoint de cotação de ações/FIIs não cobre) -->
-      <option value="^BVSP"><option value="^IFIX">
-
-      <!-- Câmbio e Cripto (endpoints diferentes — ver observação) -->
-      <option value="USD-BRL"><option value="EUR-BRL"><option value="BTC-BRL">
-      <option value="ETH-BRL">
-    </datalist>
-    <select id="tokenSelect" title="Escolher chave de API"></select>
-    <button class="btn" id="loadBtn">Analisar</button>
-    <button class="btn ghost" id="aiBtn">IA · Leitura</button>
-    <button class="btn ghost" id="settingsBtn" title="Configurações">⚙</button>
-  </div>
-</header>
-
-<div class="modal-overlay" id="settingsOverlay">
-  <div class="modal">
-    <div class="modal-head"><h3>Configurações</h3><button class="modal-close" id="closeSettings">✕</button></div>
-    <label class="modal-label">Adicionar novo token da API (brapi.dev)</label>
-    <input type="password" id="newTokenInput" class="modal-input" placeholder="Colar nova chave aqui" autocomplete="off">
-    <input type="text" id="newTokenLabel" class="modal-input" placeholder="Nome pra essa chave (ex: Pessoal, Trabalho)" autocomplete="off">
-    <div class="modal-status" id="tokenStatus"></div>
-    <div class="modal-actions">
-      <button class="btn ghost" id="clearTokenBtn">Remover chave selecionada</button>
-      <button class="btn" id="saveTokenBtn">Adicionar</button>
-    </div>
-    <p class="modal-hint">As chaves ficam salvas só neste navegador (localStorage), e você escolhe qual usar pelo seletor no topo, ao lado do campo de ticker. Sem chave, só funcionam os tickers de teste da brapi: PETR4, VALE3, MGLU3, ITUB4. Para FIIs reais (MXRF11, HGLG11...), gere uma chave grátis em <a href="https://brapi.dev/dashboard" target="_blank">brapi.dev/dashboard</a> e adicione aqui.</p>
-  </div>
-</div>
-
-<main id="main">
-  <div class="empty-state" id="emptyState">
-    <div class="big">$</div>
-    <p>Digite um ticker (ex: MXRF11, HGLG11, PETR4) e clique em <strong>Analisar</strong> para carregar cotação, dividendos, histórico e indicadores. Depois use <strong>IA · Leitura</strong> para uma interpretação automática dos dados.</p>
-  </div>
-</main>
-
-<footer>Dados: brapi.dev (B3 / CVM / BCB) — uso informativo, não é recomendação de investimento.</footer>
-
-<script>
-/* =====================================================================
-   Motor de charts em Canvas nativo — zero dependência de CDN
-   ===================================================================== */
-const chartRegistry = {};
-function setupCanvas(canvas){
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = Math.max(1, Math.round(rect.width*dpr));
-  canvas.height = Math.max(1, Math.round(rect.height*dpr));
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  return { ctx, w: rect.width, h: rect.height };
-}
-function registerChart(id, drawFn){
-  const canvas = document.getElementById(id);
-  if(!canvas) return;
-  chartRegistry[id] = { canvas, drawFn };
-  drawChart(id);
-}
-function drawChart(id){
-  const entry = chartRegistry[id];
-  if(!entry || !entry.canvas.isConnected) return;
-  const { ctx, w, h } = setupCanvas(entry.canvas);
-  ctx.clearRect(0,0,w,h);
-  try{ entry.drawFn(ctx, w, h); }catch(e){ /* dados insuficientes nesse frame */ }
-}
-function redrawAllCharts(){ Object.keys(chartRegistry).forEach(drawChart); }
-let resizeTimer;
-window.addEventListener('resize', ()=>{ clearTimeout(resizeTimer); resizeTimer=setTimeout(redrawAllCharts,120); });
-new ResizeObserver(()=>{ clearTimeout(resizeTimer); resizeTimer=setTimeout(redrawAllCharts,80); }).observe(document.body);
-
-function niceStep(range, targetTicks){
-  const raw = range/targetTicks || 1;
-  const mag = Math.pow(10, Math.floor(Math.log10(Math.abs(raw)||1)));
-  const norm = raw/mag;
-  let step; if(norm<1.5) step=1; else if(norm<3) step=2; else if(norm<7) step=5; else step=10;
-  return step*mag || 1;
-}
-function noData(ctx,w,h,msg){
-  ctx.fillStyle='#465350'; ctx.font='12px ui-monospace,monospace'; ctx.textAlign='center';
-  ctx.fillText(msg||'Sem dados suficientes', w/2, h/2);
-  ctx.textAlign='left';
-}
-function drawLineChart(ctx,w,h,{labels,series,yTickFmt,padding}){
-  padding = padding || {top:10,right:52,bottom:20,left:6};
-  const plotW=w-padding.left-padding.right, plotH=h-padding.top-padding.bottom;
-  const allVals=[]; series.forEach(s=>s.data.forEach(v=>{ if(v!=null && !isNaN(v)) allVals.push(v); }));
-  if(!allVals.length || labels.length<2){ noData(ctx,w,h); return; }
-  let lo=Math.min(...allVals), hi=Math.max(...allVals);
-  if(lo===hi){ lo-=Math.abs(lo)*0.05||1; hi+=Math.abs(hi)*0.05||1; }
-  const pad=(hi-lo)*0.12; lo-=pad; hi+=pad;
-  const n=labels.length;
-  const xFor=i=>padding.left+(n<=1?0:(i/(n-1))*plotW);
-  const yFor=v=>padding.top+(1-(v-lo)/(hi-lo))*plotH;
-  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.fillStyle='#7f948e';
-  ctx.font='10px ui-monospace,monospace'; ctx.textBaseline='middle';
-  const step=niceStep(hi-lo,5); const first=Math.ceil(lo/step)*step;
-  for(let v=first; v<=hi; v+=step){
-    const y=yFor(v);
-    ctx.beginPath(); ctx.moveTo(padding.left,y); ctx.lineTo(w-padding.right,y); ctx.stroke();
-    ctx.fillText(yTickFmt?yTickFmt(v):v.toFixed(1), w-padding.right+6, y);
-  }
-  const tickEvery=Math.max(1,Math.round(n/6));
-  ctx.textAlign='center';
-  for(let i=0;i<n;i+=tickEvery) ctx.fillText(labels[i], xFor(i), h-8);
-  ctx.textAlign='left';
-  series.forEach(s=>{
-    if(s.fill){
-      const grad=ctx.createLinearGradient(0,padding.top,0,h-padding.bottom);
-      grad.addColorStop(0,s.color+'50'); grad.addColorStop(1,s.color+'00');
-      ctx.beginPath(); let started=false; let lastI=0;
-      s.data.forEach((v,i)=>{ if(v==null||isNaN(v))return; const x=xFor(i),y=yFor(v); if(!started){ctx.moveTo(x,y);started=true;}else ctx.lineTo(x,y); lastI=i; });
-      ctx.lineTo(xFor(lastI), h-padding.bottom); ctx.lineTo(xFor(0), h-padding.bottom); ctx.closePath();
-      ctx.fillStyle=grad; ctx.fill();
-    }
-    ctx.beginPath(); ctx.strokeStyle=s.color; ctx.lineWidth=s.width||2; let started=false;
-    s.data.forEach((v,i)=>{ if(v==null||isNaN(v)){started=false;return;} const x=xFor(i),y=yFor(v); if(!started){ctx.moveTo(x,y);started=true;}else ctx.lineTo(x,y); });
-    ctx.stroke();
-    if(s.points){
-      ctx.fillStyle=s.color;
-      s.data.forEach((v,i)=>{ if(v==null||isNaN(v))return; ctx.beginPath(); ctx.arc(xFor(i),yFor(v),2.6,0,Math.PI*2); ctx.fill(); });
-    }
-  });
-}
-function drawBarChart(ctx,w,h,{labels,data,color,yTickFmt,padding}){
-  padding = padding || {top:10,right:52,bottom:20,left:6};
-  const plotW=w-padding.left-padding.right, plotH=h-padding.top-padding.bottom;
-  const vals=data.filter(v=>v!=null&&!isNaN(v));
-  if(!vals.length){ noData(ctx,w,h); return; }
-  let hi=Math.max(...vals,0), lo=Math.min(...vals,0);
-  if(hi===lo) hi=hi+1;
-  const yFor=v=>padding.top+(1-(v-lo)/(hi-lo))*plotH;
-  const zeroY=yFor(0);
-  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.fillStyle='#7f948e';
-  ctx.font='10px ui-monospace,monospace'; ctx.textBaseline='middle';
-  const step=niceStep(hi-lo,4); const first=Math.ceil(lo/step)*step;
-  for(let v=first; v<=hi; v+=step){
-    const y=yFor(v);
-    ctx.beginPath(); ctx.moveTo(padding.left,y); ctx.lineTo(w-padding.right,y); ctx.stroke();
-    ctx.fillText(yTickFmt?yTickFmt(v):v.toFixed(1), w-padding.right+6, y);
-  }
-  const n=data.length; const bw=Math.max(2,(plotW/n)*0.62);
-  data.forEach((v,i)=>{
-    if(v==null||isNaN(v)) return;
-    const x=padding.left+((i+0.5)/n)*plotW; const y=yFor(v);
-    ctx.fillStyle=color; ctx.fillRect(x-bw/2, Math.min(y,zeroY), bw, Math.max(1,Math.abs(y-zeroY)));
-  });
-  const tickEvery=Math.max(1,Math.round(n/6));
-  ctx.textAlign='center';
-  for(let i=0;i<n;i+=tickEvery) ctx.fillText(labels[i], padding.left+((i+0.5)/n)*plotW, h-8);
-  ctx.textAlign='left';
-}
-function drawGauge(ctx,w,h,value,{min=0,max=2,color='#ffa227',label=''}){
-  const cx=w/2, cy=h*0.74, r=Math.min(w*0.42,h*0.62);
-  ctx.lineWidth=13; ctx.lineCap='round';
-  ctx.strokeStyle='#1f2b2a';
-  ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,0); ctx.stroke();
-  if(value!=null && !isNaN(value)){
-    const t=Math.max(0,Math.min(1,(value-min)/(max-min)));
-    ctx.strokeStyle=color;
-    ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,Math.PI+Math.PI*t); ctx.stroke();
-    ctx.fillStyle='#eef2f0'; ctx.font='700 27px ui-monospace,monospace'; ctx.textAlign='center';
-    ctx.fillText(value.toFixed(2), cx, cy-16);
-  } else {
-    ctx.fillStyle='#465350'; ctx.font='700 20px ui-monospace,monospace'; ctx.textAlign='center';
-    ctx.fillText('—', cx, cy-16);
-  }
-  ctx.font='10px ui-monospace,monospace'; ctx.fillStyle='#7f948e';
-  label.split('\n').forEach((l,i)=>ctx.fillText(l, cx, cy+8+i*13));
-  ctx.textAlign='left';
-}
-function calcSMA(values, period){
-  const out = new Array(values.length).fill(NaN);
-  let sum=0;
-  for(let i=0;i<values.length;i++){
-    sum+=values[i];
-    if(i>=period) sum-=values[i-period];
-    if(i>=period-1) out[i]=sum/period;
-  }
-  return out;
-}
-
-/* =====================================================================
-   Estado / elementos
-   ===================================================================== */
-const els = {
-  ticker: document.getElementById('tickerInput'),
-  tickerSuggestions: document.getElementById('tickerSuggestions'),
-  tickerDropdownBtn: document.getElementById('tickerDropdownBtn'),
-  tickerDropdown: document.getElementById('tickerDropdown'),
-  tokenSelect: document.getElementById('tokenSelect'),
-  loadBtn: document.getElementById('loadBtn'),
-  aiBtn: document.getElementById('aiBtn'),
-  main: document.getElementById('main'),
-  settingsBtn: document.getElementById('settingsBtn'),
-  settingsOverlay: document.getElementById('settingsOverlay'),
-  closeSettings: document.getElementById('closeSettings'),
-  newTokenInput: document.getElementById('newTokenInput'),
-  newTokenLabel: document.getElementById('newTokenLabel'),
-  tokenStatus: document.getElementById('tokenStatus'),
-  saveTokenBtn: document.getElementById('saveTokenBtn'),
-  clearTokenBtn: document.getElementById('clearTokenBtn'),
-};
-
-/* ---------- Gerenciamento de múltiplas chaves ----------
-   As chaves padrão ficam FIXAS no código (não dependem de localStorage
-   pra existir — isso evita o bug de seletor "sem chave" caso o
-   navegador bloqueie/atrase o localStorage). Chaves extras que o
-   usuário adicionar em Configurações ficam salvas por cima dessas. */
-const DEFAULT_TOKENS = [
-  { label: 'Chave 1', token: 'gB1igs3qAZgEVDenXbFLko' },
-  { label: 'Chave 2', token: 'uzc4f8Yw6htroiCS2GTzii' }
-];
-const EXTRA_TOKENS_KEY = 'brapi_extra_tokens';
-const SELECTED_KEY = 'brapi_selected_token_label';
-
-function loadExtraTokens(){
-  try{
-    const raw = localStorage.getItem(EXTRA_TOKENS_KEY);
-    const list = raw ? JSON.parse(raw) : [];
-    return Array.isArray(list) ? list : [];
-  }catch(e){ return []; }
-}
-function saveExtraTokens(list){
-  try{ localStorage.setItem(EXTRA_TOKENS_KEY, JSON.stringify(list)); }catch(e){ /* localStorage indisponível */ }
-}
-function loadTokens(){ return [...DEFAULT_TOKENS, ...loadExtraTokens()]; }
-
-function renderTokenSelect(){
-  const list = loadTokens();
-  let selected = '';
-  try{ selected = localStorage.getItem(SELECTED_KEY) || ''; }catch(e){}
-  els.tokenSelect.innerHTML =
-    '<option value="">Sem chave (só tickers de teste)</option>' +
-    list.map(t=>`<option value="${t.label}">${t.label}</option>`).join('') +
-    '<option value="__add__">+ Adicionar chave...</option>';
-  els.tokenSelect.value = (selected && list.some(t=>t.label===selected)) ? selected : list[0].label;
-}
-function getToken(){
-  const label = els.tokenSelect.value;
-  if(!label || label==='__add__') return '';
-  const list = loadTokens();
-  const found = list.find(t=>t.label===label);
-  return found ? found.token : '';
-}
-els.tokenSelect.addEventListener('change', ()=>{
-  if(els.tokenSelect.value==='__add__'){
-    openSettings();
-    renderTokenSelect(); // volta pro valor anterior enquanto o modal está aberto
-    return;
-  }
-  localStorage.setItem(SELECTED_KEY, els.tokenSelect.value);
-});
-
-function openSettings(){
-  els.newTokenInput.value = '';
-  els.newTokenLabel.value = '';
-  const n = loadTokens().length;
-  els.tokenStatus.textContent = `${n} chave(s) disponível(is) no seletor do topo.`;
-  els.tokenStatus.classList.remove('err');
-  els.settingsOverlay.classList.add('open');
-}
-function closeSettingsModal(){ els.settingsOverlay.classList.remove('open'); }
-els.settingsBtn.addEventListener('click', openSettings);
-els.closeSettings.addEventListener('click', closeSettingsModal);
-els.settingsOverlay.addEventListener('click', e=>{ if(e.target===els.settingsOverlay) closeSettingsModal(); });
-els.saveTokenBtn.addEventListener('click', ()=>{
-  const v = els.newTokenInput.value.trim();
-  const label = els.newTokenLabel.value.trim() || `Chave ${loadTokens().length+1}`;
-  if(!v){ els.tokenStatus.textContent='Cole uma chave antes de adicionar.'; els.tokenStatus.classList.add('err'); return; }
-  const extra = loadExtraTokens();
-  extra.push({label, token:v});
-  saveExtraTokens(extra);
-  try{ localStorage.setItem(SELECTED_KEY, label); }catch(e){}
-  els.newTokenInput.value=''; els.newTokenLabel.value='';
-  els.tokenStatus.classList.remove('err');
-  els.tokenStatus.textContent=`Chave "${label}" adicionada e selecionada.`;
-  renderTokenSelect();
-});
-els.clearTokenBtn.addEventListener('click', ()=>{
-  const current = els.tokenSelect.value;
-  if(!current || current==='__add__'){
-    els.tokenStatus.textContent='Selecione uma chave no topo antes de remover.';
-    els.tokenStatus.classList.add('err');
-    return;
-  }
-  if(DEFAULT_TOKENS.some(t=>t.label===current)){
-    els.tokenStatus.textContent='Essa é uma chave padrão do app e não pode ser removida — só as que você adicionou.';
-    els.tokenStatus.classList.add('err');
-    return;
-  }
-  const extra = loadExtraTokens().filter(t=>t.label!==current);
-  saveExtraTokens(extra);
-  try{ if(localStorage.getItem(SELECTED_KEY)===current) localStorage.removeItem(SELECTED_KEY); }catch(e){}
-  els.tokenStatus.classList.remove('err');
-  els.tokenStatus.textContent=`Chave "${current}" removida.`;
-  renderTokenSelect();
-});
-
-/* ---------- Lista completa de ativos (datalist dinâmica) ----------
-   Busca todos os tickers disponíveis na B3 via /v2/tickers e populam
-   o datalist do campo de busca, substituindo a lista fixa de 18 itens.
-   Roda uma vez ao carregar a página; se falhar, mantém os 18 padrão
-   que já estão no HTML como fallback. */
-async function loadFullTickerList(){
-  const token = getToken();
-  try{
-    const json = await apiGet('/v2/tickers', token ? {limit:'5000'} : {limit:'500'}, token);
-    let raw = extractData(json);
-    let list = toArray(raw);
-    // Alguns formatos retornam {stocks:[...], indexes:[...], funds:[...]} dentro de data
-    if(!list.length && raw && typeof raw === 'object'){
-      list = ['stocks','funds','indexes','bdrs','etfs'].flatMap(k => Array.isArray(raw[k]) ? raw[k] : []);
-    }
-    const symbols = list
-      .map(item => typeof item === 'string' ? item : (item.stock || item.symbol || item.ticker || item.code))
-      .filter(Boolean);
-    if(!symbols.length) return; // mantém fallback fixo do HTML
-
-    const uniqueSorted = [...new Set(symbols)].sort();
-    const existing = Array.from(els.tickerSuggestions.options).map(o=>o.value);
-    const merged = [...new Set([...existing, ...uniqueSorted])].sort();
-    els.tickerSuggestions.innerHTML = merged.map(s=>`<option value="${s}">`).join('');
-  }catch(e){
-    // API indisponível/sem permissão pra esse endpoint no plano — mantém a lista fixa de 18 ativos.
-    console.warn('Não foi possível carregar lista completa de tickers:', e.message);
-  }
-}
-/* ---------- Painel visível de ativos (além do datalist nativo) ----------
-   O <datalist> nativo depende do navegador pra mostrar a setinha e nem
-   sempre é visível/óbvio. Esse painel é um dropdown de verdade, sempre
-   visível ao clicar no botão ▾, com os mesmos ativos do datalist. */
-const TICKER_GROUPS = [
-  { label: 'Ações', items: ['PETR4','PETR3','VALE3','ITUB4','ITSA4','BBAS3','BBDC4','BBDC3','BPAC11','WEGE3','ABEV3','MGLU3','B3SA3','RENT3','LREN3','RADL3','RAIL3','SUZB3','GGBR4','CSNA3','USIM5','CSAN3','PRIO3','UGPA3','EQTL3','ELET3','ELET6','CMIG4','CPFE3','ENGI11','TAEE11','EGIE3','JBSS3','BRFS3','MRFG3','HAPV3','RDOR3','FLRY3','COGN3','YDUQ3','AZUL4','GOLL4','EMBR3','CCRO3','VIVT3','TIMS3','SBSP3'] },
-  { label: 'Fundos Imobiliários (FIIs)', items: ['MXRF11','HGLG11','KNRI11','XPLG11','VISC11','BCFF11','HGRU11','BTLG11','VGHF11','RECR11','KNIP11','IRDM11','XPML11','HGRE11','VILG11','KNCR11','RBRF11','MCCI11','RBRR11','HFOF11','RZTR11','ALZR11','BRCO11','GGRC11','VRTA11','HGBS11','XPCI11','CPTS11','PVBI11','LVBI11','BTCI11'] },
-  { label: 'BDRs', items: ['AAPL34','GOOGL34','AMZO34','MSFT34','TSLA34','NVDC34','META34','NFLX34','DISB34','JPMC34','BABA34','AMD34'] },
-  { label: 'ETFs', items: ['BOVA11','IVVB11','SMAL11','HASH11','BOVV11','DIVO11','GOLD11','FIND11','BBSD11','XFIX11','ISUS11'] },
-  { label: 'Índices', items: ['^BVSP','^IFIX'] },
-  { label: 'Câmbio e Cripto', items: ['USD-BRL','EUR-BRL','BTC-BRL','ETH-BRL'] },
-];
-function renderTickerDropdown(){
-  els.tickerDropdown.innerHTML = TICKER_GROUPS.map(g => `
-    <div class="td-group">${g.label}</div>
-    ${g.items.map(t=>`<div class="td-item" data-t="${t}">${t}</div>`).join('')}
-  `).join('');
-}
-function toggleTickerDropdown(force){
-  const open = force !== undefined ? force : !els.tickerDropdown.classList.contains('open');
-  els.tickerDropdown.classList.toggle('open', open);
-}
-renderTickerDropdown();
-els.tickerDropdownBtn.addEventListener('click', (e)=>{
-  e.stopPropagation();
-  toggleTickerDropdown();
-});
-els.tickerDropdown.addEventListener('click', (e)=>{
-  const item = e.target.closest('.td-item');
-  if(!item) return;
-  els.ticker.value = item.dataset.t;
-  toggleTickerDropdown(false);
-});
-document.addEventListener('click', (e)=>{
-  if(!e.target.closest('.ticker-wrap')) toggleTickerDropdown(false);
-});
-
-function fmtBRL(v, dec=2){ if(v===null||v===undefined||isNaN(v)) return '—'; return Number(v).toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
-function fmtPct(v, dec=2){ if(v===null||v===undefined||isNaN(v)) return '—'; return (v>0?'+':'')+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec})+'%'; }
-function fmtCompactBRL(v){
-  if(v===null||v===undefined||isNaN(v)) return '—';
-  const abs=Math.abs(v);
-  if(abs>=1e9) return 'R$ '+(v/1e9).toFixed(2)+'B';
-  if(abs>=1e6) return 'R$ '+(v/1e6).toFixed(2)+'M';
-  if(abs>=1e3) return 'R$ '+(v/1e3).toFixed(1)+'K';
-  return 'R$ '+fmtBRL(v);
-}
-function fmtCompactNum(v){
-  if(v===null||v===undefined||isNaN(v)) return '—';
-  const abs=Math.abs(v);
-  if(abs>=1e9) return (v/1e9).toFixed(2)+'B';
-  if(abs>=1e6) return (v/1e6).toFixed(2)+'M';
-  if(abs>=1e3) return (v/1e3).toFixed(1)+'K';
-  return fmtBRL(v,0);
-}
-function isFII(ticker){ return /11$/.test(ticker); }
-
-/* ---------- API v2 (brapi.dev) ---------- */
-async function apiGet(path, params, token){
-  const qs = new URLSearchParams(params).toString();
-  const url = `https://brapi.dev/api${path}?${qs}`;
-  const headers = token ? {'Authorization': `Bearer ${token}`} : {};
-  let res;
-  try{ res = await fetch(url, {headers}); }
-  catch(netErr){ throw new Error('Falha de rede em '+path+': '+netErr.message); }
-  let json;
-  try{ json = await res.json(); }
-  catch(e){ throw new Error(path+' devolveu resposta não-JSON (HTTP '+res.status+').'); }
-  if(!res.ok || json.error){ throw new Error((json.message || ('HTTP '+res.status)) + ' — '+path); }
-  return json;
-}
-function extractData(json){ const r=json?.results?.[0]; if(!r) return null; return (r.data!==undefined)?r.data:r; }
-function toArray(d){
-  if(Array.isArray(d)) return d;
-  if(d && typeof d==='object'){
-    for(const k of ['historicalDataPrice','prices','history','dividends','cashDividends','items','results']){
-      if(Array.isArray(d[k])) return d[k];
-    }
-  }
-  return [];
-}
-function toObj(d){ if(Array.isArray(d)) return d[0]||{}; return d||{}; }
-function parseDate(v){
-  if(v===null||v===undefined) return null;
-  if(typeof v==='number') return new Date(v>2e10?v:v*1000);
-  const d=new Date(v); return isNaN(d)?null:d;
-}
-
-/* ---------- Layout ---------- */
-function buildLayout(){
-  els.main.innerHTML = `
-    <div id="errBox"></div>
-    <div class="hero-row" id="heroRow"></div>
-    <div class="grid">
-      <div class="card span-8">
-        <div class="card-head">
-          <h3>Histórico de preço · 1 ano</h3>
-          <div class="legend"><span><i style="background:#ffa227"></i>Fechamento</span><span><i style="background:#25d9a0"></i>MM20</span></div>
+    <header>
+        <div class="brand">
+            <span class="mark"></span>
+            <span class="name">B3<b>▼</b>ANALYTICS</span>
+            <span class="tag">brapi.dev</span>
         </div>
-        <div class="section-body" id="secPrice"><div class="chart-box"><canvas id="chartPrice"></canvas></div></div>
-      </div>
-      <div class="card span-4">
-        <h3>P/VP</h3>
-        <div class="section-body" id="secGauge"><div class="chart-box"><canvas id="gaugeCanvas"></canvas></div></div>
-      </div>
-
-      <div class="card span-6">
-        <h3>Dividendos mensais</h3>
-        <div class="section-body" id="secDivChart"><div class="chart-box"><canvas id="chartDiv"></canvas></div></div>
-      </div>
-      <div class="card span-6">
-        <h3>Dividend yield mensal</h3>
-        <div class="section-body" id="secDYChart"><div class="chart-box"><canvas id="chartDY"></canvas></div></div>
-      </div>
-
-      <div class="card span-6">
-        <h3>Retorno acumulado</h3>
-        <div class="section-body" id="secCum"><div class="chart-box short"><canvas id="chartCum"></canvas></div></div>
-      </div>
-      <div class="card span-6">
-        <h3>Volume negociado</h3>
-        <div class="section-body" id="secVol"><div class="chart-box short"><canvas id="chartVol"></canvas></div></div>
-      </div>
-
-      <div class="card span-4">
-        <h3>Indicadores</h3>
-        <div class="section-body" id="secStats"><div class="stat-grid" id="statGrid"></div></div>
-      </div>
-      <div class="card span-8">
-        <h3>Últimos dividendos pagos</h3>
-        <div class="section-body" id="secDivTable" style="max-height:270px;overflow-y:auto;">
-          <table id="divTable"><thead><tr><th>Data base</th><th>Pagamento</th><th>Valor</th><th>Tipo</th></tr></thead><tbody></tbody></table>
+        <div class="controls">
+            <div class="ticker-wrap">
+                <input type="text" id="tickerInput" placeholder="MXRF11" value="PETR4" autocomplete="off" />
+                <button type="button" id="tickerDropdownBtn" title="Ver lista de ativos">▾</button>
+                <div class="ticker-dropdown" id="tickerDropdown"></div>
+            </div>
+            <button class="btn primary" id="loadBtn">Analisar</button>
+            <button class="btn ghost" id="aiBtn">IA · Leitura</button>
         </div>
-      </div>
+    </header>
 
-      <div class="card span-12 ai-panel">
-        <h3>Leitura interpretativa</h3>
-        <div id="aiOutput" class="ai-output">Carregue um ativo e clique em <strong>IA · Leitura</strong> no topo pra gerar uma interpretação com base nos dados carregados (tendência, dividendos, valuation, pontos de atenção).</div>
-      </div>
+    <main id="main">
+        <div class="empty-state" id="emptyState">
+            <div class="big">⌘</div>
+            <p>Digite um ticker (ex: <strong>MXRF11</strong>, <strong>HGLG11</strong>, <strong>PETR4</strong>) e clique em <strong>Analisar</strong> para carregar cotações, dividendos, histórico e indicadores. Depois use <strong>IA · Leitura</strong> para uma interpretação automática.</p>
+        </div>
+    </main>
 
-      <div class="span-12">
-        <details class="debug-panel">
-          <summary>Ver resposta bruta da API (debug)</summary>
-          <pre id="debugPre"></pre>
-        </details>
-      </div>
-    </div>
-  `;
-}
-function sectionError(id, msg){
-  const el = document.getElementById(id);
-  if(el) el.innerHTML = `<div class="mini-error">⚠ ${msg}</div>`;
-}
+    <footer>Dados: brapi.dev (B3 / CVM / BCB) — uso informativo, não é recomendação de investimento.</footer>
 
-function renderHero(q, ticker, histNorm){
-  const chg = q.regularMarketChangePercent ?? 0;
-  const cls = chg>=0?'up':'down';
-  document.getElementById('heroRow').innerHTML = `
-    <div class="hero-cell main">
-      <div class="label">${ticker} · ${q.shortName||q.longName||''}</div>
-      <div class="value">R$ ${fmtBRL(q.regularMarketPrice)}</div>
-      <div class="sub ${cls}">${chg>=0?'▲':'▼'} ${fmtPct(chg)} hoje</div>
-      <canvas id="heroSpark" class="hero-spark"></canvas>
-    </div>
-    <div class="hero-cell">
-      <div class="label">Mín / Máx 52 sem.</div>
-      <div class="value" style="font-size:15px;">R$ ${fmtBRL(q.fiftyTwoWeekLow)} <span style="color:var(--muted)">—</span> R$ ${fmtBRL(q.fiftyTwoWeekHigh)}</div>
-    </div>
-    <div class="hero-cell">
-      <div class="label">Máx./mín. do dia</div>
-      <div class="value" style="font-size:15px;">R$ ${fmtBRL(q.regularMarketDayLow)} <span style="color:var(--muted)">—</span> R$ ${fmtBRL(q.regularMarketDayHigh)}</div>
-    </div>
-    <div class="hero-cell">
-      <div class="label">Valor de mercado</div>
-      <div class="value" style="font-size:17px;">${fmtCompactBRL(q.marketCap)}</div>
-    </div>
-    <div class="hero-cell">
-      <div class="label">Volume (título)</div>
-      <div class="value" style="font-size:17px;">${fmtCompactNum(q.regularMarketVolume)}</div>
-    </div>
-    <div class="hero-cell">
-      <div class="label">Variação</div>
-      <div class="value ${cls}" style="font-size:17px;">${fmtPct(chg)}</div>
-    </div>
-  `;
-  if(histNorm && histNorm.length>1){
-    registerChart('heroSpark', (ctx,w,h)=>{
-      drawLineChart(ctx,w,h,{
-        labels: histNorm.map(()=>''),
-        series: [{ data: histNorm.map(p=>p.close), color: chg>=0?'#25d9a0':'#ff5468', width:1.6, fill:true }],
-        padding:{top:2,right:2,bottom:2,left:2}
-      });
-    });
-  }
-}
-function gaugeVP(stats, q){
-  const pvp = stats.priceToBook ?? stats.pvp ?? stats.priceToBookRatio ?? null;
-  let label, color;
-  if(pvp===null){ label='Indicador não\nretornado pela API'; color='#7f948e'; }
-  else if(pvp<0.97){ label='DESCONTO sobre\no valor patrimonial'; color='#25d9a0'; }
-  else if(pvp>1.03){ label='ÁGIO sobre\no valor patrimonial'; color='#ff5468'; }
-  else{ label='Próximo ao\nvalor patrimonial'; color='#ffa227'; }
-  registerChart('gaugeCanvas', (ctx,w,h)=>{
-    drawGauge(ctx,w,h, pvp!==null?Number(pvp):null, { min:0, max:2, color, label });
-  });
-}
-function renderStatGrid(q, stats){
-  const rows = [
-    ['Preço atual', 'R$ '+fmtBRL(q.regularMarketPrice)],
-    ['VP / cota', (stats.bookValue ?? stats.navPerShare)? 'R$ '+fmtBRL(stats.bookValue ?? stats.navPerShare): '—'],
-    ['P/L', (stats.trailingPE ?? stats.priceEarnings)? fmtBRL(stats.trailingPE ?? stats.priceEarnings): '—'],
-    ['P/VP', (stats.priceToBook ?? stats.pvp)? fmtBRL(stats.priceToBook ?? stats.pvp): '—'],
-    ['DY 12m', (stats.dividendYield ?? stats.dividendYield12m)? fmtBRL((stats.dividendYield ?? stats.dividendYield12m))+'%': '—'],
-    ['Market cap', fmtCompactBRL(q.marketCap)],
-    ['Máx. 52 sem.', 'R$ '+fmtBRL(q.fiftyTwoWeekHigh)],
-    ['Mín. 52 sem.', 'R$ '+fmtBRL(q.fiftyTwoWeekLow)],
-    ['Moeda', q.currency||'BRL'],
-  ];
-  document.getElementById('statGrid').innerHTML = rows.map(([k,v])=>`
-    <div class="stat-item"><span class="k">${k}</span><span class="v">${v}</span></div>
-  `).join('');
-}
-function renderDivTable(divs){
-  const tbody = document.querySelector('#divTable tbody');
-  if(!divs || !divs.length){
-    tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted)">Sem dados de dividendos retornados pela API pra este ticker.</td></tr>`;
-    return;
-  }
-  const norm = divs.map(d=>({
-    base: parseDate(d.date ?? d.dataCom ?? d.approvedOn),
-    pgto: parseDate(d.paymentDate ?? d.paymentOn ?? d.dataPagamento),
-    valor: d.rate ?? d.value ?? d.amount ?? d.valor ?? 0,
-    tipo: d.label ?? d.type ?? d.category ?? 'Rendimento'
-  })).sort((a,b)=> (b.pgto||b.base||0) - (a.pgto||a.base||0));
-  tbody.innerHTML = norm.slice(0,15).map(d=>`
-    <tr>
-      <td>${d.base? d.base.toLocaleDateString('pt-BR'): '—'}</td>
-      <td>${d.pgto? d.pgto.toLocaleDateString('pt-BR'): '—'}</td>
-      <td>R$ ${fmtBRL(d.valor,4)}</td>
-      <td>${d.tipo}</td>
-    </tr>
-  `).join('');
-}
-function renderPriceChart(hist){
-  const labels = hist.map(h=> h.d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
-  const prices = hist.map(h=>h.close);
-  const sma20 = calcSMA(prices,20);
-  registerChart('chartPrice', (ctx,w,h)=>{
-    drawLineChart(ctx,w,h,{
-      labels, yTickFmt:v=>'R$ '+v.toFixed(1),
-      series:[
-        { data:prices, color:'#ffa227', width:2, fill:true },
-        { data:sma20, color:'#25d9a0', width:1.3 }
-      ]
-    });
-  });
-}
-function renderCumChart(hist){
-  const base = hist[0]?.close || 1;
-  const labels = hist.map(h=> h.d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
-  const ret = hist.map(h=> ((h.close-base)/base*100));
-  const last = ret[ret.length-1] ?? 0;
-  registerChart('chartCum', (ctx,w,h)=>{
-    drawLineChart(ctx,w,h,{ labels, yTickFmt:v=>v.toFixed(0)+'%',
-      series:[{ data:ret, color: last>=0?'#25d9a0':'#ff5468', width:2, fill:true }] });
-  });
-}
-function renderVolChart(hist){
-  const labels = hist.map(h=> h.d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
-  const vols = hist.map(h=>h.volume||0);
-  registerChart('chartVol', (ctx,w,h)=>{
-    drawBarChart(ctx,w,h,{ labels, data:vols, color:'#3a4644', yTickFmt:v=>fmtCompactNum(v) });
-  });
-}
-function monthKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
-function renderDivChart(divs){
-  if(!divs || !divs.length) return null;
-  const map = {};
-  divs.forEach(d=>{
-    const dt = parseDate(d.date ?? d.dataCom ?? d.approvedOn);
-    if(!dt) return;
-    const k = monthKey(dt);
-    map[k] = (map[k]||0) + Number(d.rate ?? d.value ?? d.amount ?? d.valor ?? 0);
-  });
-  const keys = Object.keys(map).sort().slice(-12);
-  if(!keys.length) return null;
-  registerChart('chartDiv', (ctx,w,h)=>{
-    drawBarChart(ctx,w,h,{ labels:keys, data:keys.map(k=>map[k]), color:'#d8b25c', yTickFmt:v=>'R$ '+v.toFixed(2) });
-  });
-  return map;
-}
-function renderDYChart(divMap, price){
-  if(!divMap || !price) return;
-  const keys = Object.keys(divMap).sort().slice(-12);
-  const dy = keys.map(k=> (divMap[k]/price*100));
-  registerChart('chartDY', (ctx,w,h)=>{
-    drawLineChart(ctx,w,h,{ labels:keys, yTickFmt:v=>v.toFixed(1)+'%',
-      series:[{ data:dy, color:'#25d9a0', width:2, fill:true, points:true }] });
-  });
-}
+    <script>
+        /* =====================================================================
+               Motor de charts em Canvas nativo — zero dependência de CDN
+               ===================================================================== */
+        const chartRegistry = {};
 
-/* ---------- Carregar dados ---------- */
-async function loadData(){
-  const ticker = els.ticker.value.trim().toUpperCase();
-  const token = getToken();
-  if(!ticker) return;
-  const fii = isFII(ticker);
-  debugLog = {};
+        function setupCanvas(canvas) {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = Math.max(1, Math.round(rect.width * dpr));
+            canvas.height = Math.max(1, Math.round(rect.height * dpr));
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            return { ctx, w: rect.width, h: rect.height };
+        }
 
-  els.loadBtn.textContent = 'Carregando...';
-  els.loadBtn.disabled = true;
-  buildLayout();
-  const errBox = document.getElementById('errBox');
+        function registerChart(id, drawFn) {
+            const canvas = document.getElementById(id);
+            if (!canvas) return;
+            chartRegistry[id] = { canvas, drawFn };
+            drawChart(id);
+        }
 
-  try{
-    const quoteJson = await apiGet('/v2/stocks/quote', {symbols:ticker}, token);
-    debugLog.quote = quoteJson;
-    const q = toObj(extractData(quoteJson));
-    if(!q || !q.regularMarketPrice){
-      throw new Error('A API respondeu mas sem regularMarketPrice — veja "debug" no rodapé pra checar os campos reais.');
-    }
-    currentData = {ticker, quote:q};
+        function drawChart(id) {
+            const entry = chartRegistry[id];
+            if (!entry || !entry.canvas.isConnected) return;
+            const { ctx, w, h } = setupCanvas(entry.canvas);
+            ctx.clearRect(0, 0, w, h);
+            try { entry.drawFn(ctx, w, h); } catch (_) { /* dados insuficientes */ }
+        }
 
-    let histNorm = [];
-    try{
-      const histJson = await apiGet('/v2/stocks/historical', {symbols:ticker, range:'1y', interval:'1d'}, token);
-      debugLog.historical = histJson;
-      const raw = toArray(extractData(histJson));
-      histNorm = raw.map(p=>({
-        d: parseDate(p.date ?? p.datetime ?? p.time),
-        close: p.close ?? p.regularMarketClose ?? p.adjustedClose,
-        volume: p.volume ?? p.regularMarketVolume
-      })).filter(p=>p.d && p.close!=null);
-    }catch(e){ debugLog.historical_error = e.message; }
-    lastHistNorm = histNorm;
+        function redrawAllCharts() { Object.keys(chartRegistry).forEach(drawChart); }
+        let resizeTimer;
+        window.addEventListener('resize', () => { clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(redrawAllCharts, 120); });
+        new ResizeObserver(() => { clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(redrawAllCharts, 80); }).observe(document.body);
 
-    renderHero(q, ticker, histNorm);
+        function niceStep(range, targetTicks) {
+            const raw = range / targetTicks || 1;
+            const mag = Math.pow(10, Math.floor(Math.log10(Math.abs(raw) || 1)));
+            const norm = raw / mag;
+            let step;
+            if (norm < 1.5) step = 1;
+            else if (norm < 3) step = 2;
+            else if (norm < 7) step = 5;
+            else step = 10;
+            return step * mag || 1;
+        }
 
-    if(histNorm.length){
-      renderPriceChart(histNorm);
-      renderCumChart(histNorm);
-      renderVolChart(histNorm);
-    }else{
-      sectionError('secPrice', debugLog.historical_error || 'Histórico veio vazio pra esse ticker/plano.');
-      sectionError('secCum','Sem histórico.');
-      sectionError('secVol','Sem histórico.');
-    }
+        function noData(ctx, w, h, msg) {
+            ctx.fillStyle = '#3f526f';
+            ctx.font = '12px ui-monospace,monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(msg || 'Sem dados suficientes', w / 2, h / 2);
+            ctx.textAlign = 'left';
+        }
 
-    let divs = [];
-    lastDivMap = null;
-    try{
-      const divPath = fii ? '/v2/fii/dividends' : '/v2/stocks/dividends';
-      const divJson = await apiGet(divPath, {symbols:ticker}, token);
-      debugLog.dividends = divJson;
-      divs = toArray(extractData(divJson));
-      renderDivTable(divs);
-      const divMap = renderDivChart(divs);
-      lastDivMap = divMap;
-      if(divMap) renderDYChart(divMap, q.regularMarketPrice);
-      else{ sectionError('secDivChart','Sem dividendos suficientes pra montar o gráfico.'); sectionError('secDYChart','Sem dados.'); }
-    }catch(e){
-      debugLog.dividends_error = e.message;
-      renderDivTable([]);
-      sectionError('secDivChart', e.message);
-      sectionError('secDYChart', 'Sem dados.');
-    }
+        function drawLineChart(ctx, w, h, { labels, series, yTickFmt, padding }) {
+            padding = padding || { top: 10, right: 52, bottom: 20, left: 6 };
+            const plotW = w - padding.left - padding.right,
+                plotH = h - padding.top - padding.bottom;
+            const allVals = [];
+            series.forEach(s => s.data.forEach(v => { if (v != null && !isNaN(v)) allVals.push(v); }));
+            if (!allVals.length || labels.length < 2) { noData(ctx, w, h); return; }
+            let lo = Math.min(...allVals),
+                hi = Math.max(...allVals);
+            if (lo === hi) { lo -= Math.abs(lo) * 0.05 || 1;
+                hi += Math.abs(hi) * 0.05 || 1; }
+            const pad = (hi - lo) * 0.12;
+            lo -= pad;
+            hi += pad;
+            const n = labels.length;
+            const xFor = i => padding.left + (n <= 1 ? 0 : (i / (n - 1)) * plotW);
+            const yFor = v => padding.top + (1 - (v - lo) / (hi - lo)) * plotH;
+            ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+            ctx.fillStyle = '#7a8ba8';
+            ctx.font = '10px ui-monospace,monospace';
+            ctx.textBaseline = 'middle';
+            const step = niceStep(hi - lo, 5);
+            const first = Math.ceil(lo / step) * step;
+            for (let v = first; v <= hi; v += step) {
+                const y = yFor(v);
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(w - padding.right, y);
+                ctx.stroke();
+                ctx.fillText(yTickFmt ? yTickFmt(v) : v.toFixed(1), w - padding.right + 6, y);
+            }
+            const tickEvery = Math.max(1, Math.round(n / 6));
+            ctx.textAlign = 'center';
+            for (let i = 0; i < n; i += tickEvery) ctx.fillText(labels[i], xFor(i), h - 8);
+            ctx.textAlign = 'left';
+            series.forEach(s => {
+                if (s.fill) {
+                    const grad = ctx.createLinearGradient(0, padding.top, 0, h - padding.bottom);
+                    grad.addColorStop(0, s.color + '50');
+                    grad.addColorStop(1, s.color + '00');
+                    ctx.beginPath();
+                    let started = false;
+                    let lastI = 0;
+                    s.data.forEach((v, i) => { if (v == null || isNaN(v)) return; const x = xFor(i),
+                            y = yFor(v); if (!started) { ctx.moveTo(x, y);
+                            started = true; } else ctx.lineTo(x, y);
+                        lastI = i; });
+                    ctx.lineTo(xFor(lastI), h - padding.bottom);
+                    ctx.lineTo(xFor(0), h - padding.bottom);
+                    ctx.closePath();
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+                }
+                ctx.beginPath();
+                ctx.strokeStyle = s.color;
+                ctx.lineWidth = s.width || 2;
+                let started = false;
+                s.data.forEach((v, i) => { if (v == null || isNaN(v)) { started = false; return; } const x = xFor(
+                        i),
+                        y = yFor(v); if (!started) { ctx.moveTo(x, y);
+                        started = true; } else ctx.lineTo(x, y); });
+                ctx.stroke();
+                if (s.points) {
+                    ctx.fillStyle = s.color;
+                    s.data.forEach((v, i) => { if (v == null || isNaN(v)) return;
+                        ctx.beginPath();
+                        ctx.arc(xFor(i), yFor(v), 2.6, 0, Math.PI * 2);
+                        ctx.fill(); });
+                }
+            });
+        }
 
-    lastStats = {};
-    try{
-      const statPath = fii ? '/v2/fii/indicators' : '/v2/stocks/statistics';
-      const statParams = fii ? {symbols:ticker} : {symbols:ticker, mode:'current'};
-      const statJson = await apiGet(statPath, statParams, token);
-      debugLog.statistics = statJson;
-      const stats = toObj(extractData(statJson));
-      lastStats = stats;
-      renderStatGrid(q, stats);
-      gaugeVP(stats, q);
-    }catch(e){
-      debugLog.statistics_error = e.message;
-      renderStatGrid(q, {});
-      gaugeVP({}, q);
-      sectionError('secGauge', e.message);
-    }
+        function drawBarChart(ctx, w, h, { labels, data, color, yTickFmt, padding }) {
+            padding = padding || { top: 10, right: 52, bottom: 20, left: 6 };
+            const plotW = w - padding.left - padding.right,
+                plotH = h - padding.top - padding.bottom;
+            const vals = data.filter(v => v != null && !isNaN(v));
+            if (!vals.length) { noData(ctx, w, h); return; }
+            let hi = Math.max(...vals, 0),
+                lo = Math.min(...vals, 0);
+            if (hi === lo) hi = hi + 1;
+            const yFor = v => padding.top + (1 - (v - lo) / (hi - lo)) * plotH;
+            const zeroY = yFor(0);
+            ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+            ctx.fillStyle = '#7a8ba8';
+            ctx.font = '10px ui-monospace,monospace';
+            ctx.textBaseline = 'middle';
+            const step = niceStep(hi - lo, 4);
+            const first = Math.ceil(lo / step) * step;
+            for (let v = first; v <= hi; v += step) {
+                const y = yFor(v);
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(w - padding.right, y);
+                ctx.stroke();
+                ctx.fillText(yTickFmt ? yTickFmt(v) : v.toFixed(1), w - padding.right + 6, y);
+            }
+            const n = data.length;
+            const bw = Math.max(2, (plotW / n) * 0.58);
+            data.forEach((v, i) => {
+                if (v == null || isNaN(v)) return;
+                const x = padding.left + ((i + 0.5) / n) * plotW;
+                const y = yFor(v);
+                ctx.fillStyle = color;
+                ctx.fillRect(x - bw / 2, Math.min(y, zeroY), bw, Math.max(1, Math.abs(y - zeroY)));
+            });
+            const tickEvery = Math.max(1, Math.round(n / 6));
+            ctx.textAlign = 'center';
+            for (let i = 0; i < n; i += tickEvery) ctx.fillText(labels[i], padding.left + ((i + 0.5) / n) * plotW,
+            h - 8);
+            ctx.textAlign = 'left';
+        }
 
-    document.getElementById('aiOutput').innerHTML = 'Dados carregados para <strong>'+ticker+'</strong>. Clique em <strong>IA · Leitura</strong> no topo pra gerar a interpretação.';
+        function drawGauge(ctx, w, h, value, { min = 0, max = 2, color = '#d4a043', label = '' }) {
+            const cx = w / 2,
+                cy = h * 0.74,
+                r = Math.min(w * 0.42, h * 0.62);
+            ctx.lineWidth = 13;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#1e2d48';
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, Math.PI, 0);
+            ctx.stroke();
+            if (value != null && !isNaN(value)) {
+                const t = Math.max(0, Math.min(1, (value - min) / (max - min)));
+                ctx.strokeStyle = color;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, Math.PI, Math.PI + Math.PI * t);
+                ctx.stroke();
+                ctx.fillStyle = '#eef2f6';
+                ctx.font = '700 26px ui-monospace,monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(value.toFixed(2), cx, cy - 16);
+            } else {
+                ctx.fillStyle = '#3f526f';
+                ctx.font = '700 20px ui-monospace,monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('—', cx, cy - 16);
+            }
+            ctx.font = '10px ui-monospace,monospace';
+            ctx.fillStyle = '#7a8ba8';
+            label.split('\n').forEach((l, i) => ctx.fillText(l, cx, cy + 10 + i * 13));
+            ctx.textAlign = 'left';
+        }
 
-  }catch(e){
-    errBox.innerHTML = `<div class="error-banner">⚠ ${e.message}${token?'':' — se o ticker não é PETR4/VALE3/MGLU3/ITUB4, selecione uma chave no topo (ou adicione uma em ⚙ Configurações).'}</div>`;
-    currentData = null;
-  }finally{
-    document.getElementById('debugPre').textContent = JSON.stringify(debugLog, null, 2);
-    els.loadBtn.textContent = 'Analisar';
-    els.loadBtn.disabled = false;
-  }
-}
+        function calcSMA(values, period) {
+            const out = new Array(values.length).fill(NaN);
+            let sum = 0;
+            for (let i = 0; i < values.length; i++) {
+                sum += values[i];
+                if (i >= period) sum -= values[i - period];
+                if (i >= period - 1) out[i] = sum / period;
+            }
+            return out;
+        }
 
-let currentData = null;
-let debugLog = {};
-let lastHistNorm = [];
-let lastDivMap = null;
-let lastStats = {};
+        /* =====================================================================
+               Estado / elementos
+               ===================================================================== */
+        const els = {
+            ticker: document.getElementById('tickerInput'),
+            tickerDropdownBtn: document.getElementById('tickerDropdownBtn'),
+            tickerDropdown: document.getElementById('tickerDropdown'),
+            loadBtn: document.getElementById('loadBtn'),
+            aiBtn: document.getElementById('aiBtn'),
+            main: document.getElementById('main'),
+        };
 
-/* =====================================================================
-   MOTOR DE ANÁLISE LOCAL
-   Roda 100% no navegador, sem chamada de rede — sempre disponível,
-   sempre funciona, não depende de CORS nem de chave de API.
-   Usado como leitura principal, e também como fallback caso a
-   chamada real à Claude (só funciona dentro de artifacts do claude.ai)
-   não esteja disponível neste ambiente.
-   ===================================================================== */
-function buildLocalAnalysis(){
-  const q = currentData.quote;
-  const ticker = currentData.ticker;
-  const hist = lastHistNorm;
-  const divMap = lastDivMap;
-  const stats = lastStats || {};
-  const parts = [];
+        /* ---------- Chave padrão (única, fixa) ---------- */
+        const DEFAULT_TOKEN = 'gB1igs3qAZgEVDenXbFLko';
 
-  if(hist.length >= 10){
-    const closes = hist.map(h=>h.close);
-    const last = closes[closes.length-1];
-    const first = closes[0];
-    const totalPct = ((last-first)/first)*100;
-    const win30 = closes.slice(-30);
-    const pct30 = win30.length>1 ? ((last-win30[0])/win30[0])*100 : null;
-    const high52 = q.fiftyTwoWeekHigh, low52 = q.fiftyTwoWeekLow;
-    let distHigh = (high52 && last) ? ((last-high52)/high52*100) : null;
-    let distLow = (low52 && last) ? ((last-low52)/low52*100) : null;
-    let trendLabel = Math.abs(totalPct) < 6 ? 'lateralizado, sem direção clara' : (totalPct>0 ? 'em tendência de alta' : 'em tendência de baixa');
-    let txt = `${ticker} está ${trendLabel} no período de 1 ano, com variação acumulada de ${fmtPct(totalPct)}.`;
-    if(pct30!==null) txt += ` Nos últimos 30 pregões, a variação foi de ${fmtPct(pct30)}.`;
-    if(distHigh!==null) txt += ` O preço atual está ${Math.abs(distHigh).toFixed(1)}% ${distHigh<0?'abaixo':'acima'} da máxima de 52 semanas`;
-    if(distLow!==null) txt += ` e ${Math.abs(distLow).toFixed(1)}% ${distLow<0?'abaixo':'acima'} da mínima de 52 semanas.`;
-    else txt += '.';
-    parts.push({h:'Tendência de preço', t:txt});
-  } else {
-    parts.push({h:'Tendência de preço', t:'Histórico de preço insuficiente ou não retornado pela API pra este ticker — sem base pra avaliar tendência.'});
-  }
+        function getToken() { return DEFAULT_TOKEN; }
 
-  if(divMap && Object.keys(divMap).length){
-    const keys = Object.keys(divMap).sort();
-    const vals = keys.map(k=>divMap[k]);
-    const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
-    const variance = vals.reduce((a,b)=>a+Math.pow(b-mean,2),0)/vals.length;
-    const cv = mean>0 ? (Math.sqrt(variance)/mean)*100 : null;
-    const half = Math.floor(vals.length/2);
-    const firstHalfAvg = vals.slice(0,half).reduce((a,b)=>a+b,0)/(half||1);
-    const secondHalfAvg = vals.slice(half).reduce((a,b)=>a+b,0)/((vals.length-half)||1);
-    const direction = secondHalfAvg > firstHalfAvg*1.05 ? 'crescente' : (secondHalfAvg < firstHalfAvg*0.95 ? 'decrescente' : 'estável');
-    let txt = `Foram identificados pagamentos em ${keys.length} dos últimos meses cobertos pela API, com média de R$ ${fmtBRL(mean,4)} por cota/ação.`;
-    if(cv!==null) txt += ` A variação entre os pagamentos (coeficiente de variação) é de ${cv.toFixed(0)}%, o que indica ${cv<20?'boa regularidade':(cv<45?'regularidade moderada':'irregularidade relevante')} nos valores distribuídos.`;
-    txt += ` A tendência dos pagamentos recentes é ${direction} em relação à primeira metade do período analisado.`;
-    parts.push({h:'Consistência de dividendos', t:txt});
-  } else {
-    parts.push({h:'Consistência de dividendos', t:'Não há dados de dividendos retornados pela API pra este ticker no período — não é possível avaliar consistência de pagamentos.'});
-  }
+        /* ---------- Lista completa de ativos (dropdown) ---------- */
+        const TICKER_GROUPS = [
+            { label: 'Ações', items: ['PETR4', 'PETR3', 'VALE3', 'ITUB4', 'ITSA4', 'BBAS3', 'BBDC4', 'BBDC3', 'BPAC11',
+                    'WEGE3', 'ABEV3', 'MGLU3', 'B3SA3', 'RENT3', 'LREN3', 'RADL3', 'RAIL3', 'SUZB3', 'GGBR4', 'CSNA3',
+                    'USIM5', 'CSAN3', 'PRIO3', 'UGPA3', 'EQTL3', 'ELET3', 'ELET6', 'CMIG4', 'CPFE3', 'ENGI11', 'TAEE11',
+                    'EGIE3', 'AURE3', 'JBSS3', 'BRFS3', 'MRFG3', 'BEEF3', 'SLCE3', 'SMTO3', 'CYRE3', 'MRVE3', 'EZTC3',
+                    'TOTS3', 'LWSA3', 'POSI3', 'HAPV3', 'RDOR3', 'FLRY3', 'QUAL3', 'COGN3', 'YDUQ3', 'ASAI3', 'CRFB3',
+                    'PCAR3', 'AZUL4', 'GOLL4', 'EMBR3', 'CCRO3', 'ECOR3', 'VIVT3', 'TIMS3', 'SBSP3', 'SAPR11', 'CPLE6',
+                    'NTCO3', 'ARZZ3', 'SOMA3', 'ALPA4', 'VAMO3', 'MOVI3', 'MULT3', 'IGTI11', 'BRAP4', 'BRKM5', 'KLBN11',
+                    'DXCO3', 'GMAT3', 'PETZ3', 'ANIM3', 'CVCB3', 'STBP3'
+                ] },
+            { label: 'Fundos Imobiliários (FIIs)', items: ['MXRF11', 'HGLG11', 'KNRI11', 'XPLG11', 'VISC11', 'BCFF11',
+                    'HGRU11', 'BTLG11', 'VGHF11', 'RECR11', 'KNIP11', 'IRDM11', 'XPML11', 'HGRE11', 'VILG11', 'KNCR11',
+                    'RBRF11', 'MCCI11', 'RBRR11', 'HFOF11', 'RZTR11', 'ALZR11', 'BRCO11', 'GGRC11', 'VRTA11', 'HGBS11',
+                    'TGAR11', 'XPCI11', 'CPTS11', 'MFII11', 'PVBI11', 'LVBI11', 'BTCI11'
+                ] },
+            { label: 'BDRs', items: ['AAPL34', 'GOOGL34', 'AMZO34', 'MSFT34', 'TSLA34', 'NVDC34', 'META34', 'NFLX34',
+                    'DISB34', 'JPMC34', 'BABA34', 'AMD34'
+                ] },
+            { label: 'ETFs', items: ['BOVA11', 'IVVB11', 'SMAL11', 'HASH11', 'BOVV11', 'DIVO11', 'GOLD11', 'FIND11',
+                    'BBSD11', 'XFIX11', 'ISUS11'
+                ] },
+            { label: 'Índices', items: ['^BVSP', '^IFIX'] },
+            { label: 'Câmbio e Cripto', items: ['USD-BRL', 'EUR-BRL', 'BTC-BRL', 'ETH-BRL'] },
+        ];
 
-  const pvp = stats.priceToBook ?? stats.pvp ?? stats.priceToBookRatio ?? null;
-  const pl = stats.trailingPE ?? stats.priceEarnings ?? null;
-  const dy = stats.dividendYield ?? stats.dividendYield12m ?? null;
-  if(pvp===null && pl===null && dy===null){
-    parts.push({h:'Valuation', t:'Nenhum indicador fundamentalista (P/VP, P/L, DY) foi retornado pela API pra este ticker — sem base pra leitura de valuation.'});
-  } else {
-    let txt = '';
-    if(pvp!==null) txt += `P/VP de ${Number(pvp).toFixed(2)} indica que o ativo está negociando ${pvp<0.97?'com desconto':(pvp>1.03?'com ágio':'próximo')} em relação ao valor patrimonial. `;
-    if(pl!==null) txt += `P/L de ${Number(pl).toFixed(1)} é considerado ${pl<8?'baixo':(pl<15?'moderado':'elevado')} pelos parâmetros usuais de mercado. `;
-    if(dy!==null) txt += `O dividend yield de 12 meses reportado é de ${Number(dy).toFixed(2)}%.`;
-    parts.push({h:'Valuation', t:txt.trim()});
-  }
+        function renderTickerDropdown() {
+            els.tickerDropdown.innerHTML = TICKER_GROUPS.map(g => `
+                <div class="td-group">${g.label}</div>
+                ${g.items.map(t => `<div class="td-item" data-t="${t}">${t}</div>`).join('')}
+              `).join('');
+        }
 
-  const alerts = [];
-  if(!hist.length) alerts.push('histórico de preço ausente pra este ticker/plano da API');
-  if(!divMap) alerts.push('sem histórico de dividendos disponível');
-  if(pvp===null) alerts.push('indicador P/VP não disponível');
-  if(hist.length>=30){
-    const closes = hist.map(h=>h.close);
-    const rets = closes.slice(1).map((c,i)=>(c-closes[i])/closes[i]);
-    const meanR = rets.reduce((a,b)=>a+b,0)/rets.length;
-    const vol = Math.sqrt(rets.reduce((a,b)=>a+Math.pow(b-meanR,2),0)/rets.length)*Math.sqrt(252)*100;
-    if(vol>45) alerts.push(`volatilidade anualizada estimada alta (~${vol.toFixed(0)}%)`);
-  }
-  const alertText = alerts.length
-    ? `Pontos que merecem atenção antes de qualquer decisão: ${alerts.join('; ')}.`
-    : 'Não foram identificadas lacunas relevantes nos dados carregados pra este ticker.';
-  parts.push({h:'Pontos de atenção', t:alertText});
+        function toggleTickerDropdown(force) {
+            const open = force !== undefined ? force : !els.tickerDropdown.classList.contains('open');
+            els.tickerDropdown.classList.toggle('open', open);
+        }
 
-  let scenario = 'Combinando os sinais disponíveis, ';
-  const bullets = [];
-  if(hist.length>=10){
-    const closes = hist.map(h=>h.close);
-    const totalPct = ((closes[closes.length-1]-closes[0])/closes[0])*100;
-    bullets.push(totalPct>6?'o movimento de preço recente é favorável':(totalPct<-6?'o movimento de preço recente é desfavorável':'o preço está sem tendência definida'));
-  }
-  if(pvp!==null) bullets.push(pvp<0.97?'o valuation sugere desconto':(pvp>1.03?'o valuation sugere ágio':'o valuation está equilibrado'));
-  scenario += bullets.length ? bullets.join(' e ') + '.' : 'os dados disponíveis são insuficientes pra uma leitura de cenário confiável.';
-  scenario += ' Essa é uma leitura estatística automática a partir dos dados carregados, não uma recomendação de compra ou venda.';
-  parts.push({h:'Cenário provável', t:scenario});
+        renderTickerDropdown();
+        els.tickerDropdownBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleTickerDropdown();
+        });
+        els.tickerDropdown.addEventListener('click', (e) => {
+            const item = e.target.closest('.td-item');
+            if (!item) return;
+            els.ticker.value = item.dataset.t;
+            toggleTickerDropdown(false);
+        });
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.ticker-wrap')) toggleTickerDropdown(false);
+        });
 
-  return parts.map(p=>`**${p.h}**\n${p.t}`).join('\n\n');
-}
+        function fmtBRL(v, dec = 2) { if (v === null || v === undefined || isNaN(v)) return '—'; return Number(v)
+                .toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
 
-function renderAIOutput(text, source){
-  const out = document.getElementById('aiOutput');
-  const html = text
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\n\n/g,'</p><p style="margin-top:12px;">')
-    .replace(/^/,'<p>')
-    .concat('</p>');
-  const tag = source==='remote'
-    ? '<span class="ai-source remote">Gerado por Claude</span><br>'
-    : '<span class="ai-source local">Motor de análise local</span><br>';
-  out.innerHTML = tag + html;
-}
+        function fmtPct(v, dec = 2) { if (v === null || v === undefined || isNaN(v)) return '—'; return (v > 0 ? '+' :
+                '') + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }) +
+            '%'; }
 
-/* ---------- IA (tenta Claude real; sempre cai pro motor local) ---------- */
-async function runAI(){
-  if(!currentData){
-    alert('Carregue um ativo primeiro clicando em "Analisar".');
-    return;
-  }
-  const out = document.getElementById('aiOutput');
-  out.innerHTML = `<div class="ai-loading">Gerando leitura <span class="dot"></span><span class="dot"></span><span class="dot"></span></div>`;
+        function fmtCompactBRL(v) {
+            if (v === null || v === undefined || isNaN(v)) return '—';
+            const abs = Math.abs(v);
+            if (abs >= 1e9) return 'R$ ' + (v / 1e9).toFixed(2) + 'B';
+            if (abs >= 1e6) return 'R$ ' + (v / 1e6).toFixed(2) + 'M';
+            if (abs >= 1e3) return 'R$ ' + (v / 1e3).toFixed(1) + 'K';
+            return 'R$ ' + fmtBRL(v);
+        }
 
-  const summary = {
-    ticker: currentData.ticker,
-    cotacao: currentData.quote,
-    historico_bruto: debugLog.historical ? toArray(extractData(debugLog.historical)).slice(-60) : [],
-    dividendos_brutos: debugLog.dividends ? toArray(extractData(debugLog.dividends)).slice(-12) : [],
-    indicadores: debugLog.statistics ? extractData(debugLog.statistics) : null
-  };
-  const prompt = `Você é um analista de investimentos. Com base nos dados JSON abaixo sobre o ativo ${currentData.ticker} (B3, FII ou ação), escreva uma análise curta e objetiva em português do Brasil, em parágrafos curtos, com estes tópicos em **negrito**:
+        function fmtCompactNum(v) {
+            if (v === null || v === undefined || isNaN(v)) return '—';
+            const abs = Math.abs(v);
+            if (abs >= 1e9) return (v / 1e9).toFixed(2) + 'B';
+            if (abs >= 1e6) return (v / 1e6).toFixed(2) + 'M';
+            if (abs >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+            return fmtBRL(v, 0);
+        }
 
-**Tendência de preço** **Consistência de dividendos** **Valuation** **Pontos de atenção** **Cenário provável**
+        function isFII(ticker) { return /11$/.test(ticker); }
 
-Se algum bloco vier vazio, diga isso explicitamente em vez de inventar números. Direto, sem disclaimers longos (só uma frase final curta). Dados:
+        /* ---------- API v2 (brapi.dev) ---------- */
+        async function apiGet(path, params, token) {
+            const qs = new URLSearchParams(params).toString();
+            const url = `https://brapi.dev/api${path}?${qs}`;
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+            let res;
+            try { res = await fetch(url, { headers }); } catch (netErr) { throw new Error('Falha de rede em ' + path +
+                    ': ' + netErr.message); }
+            let json;
+            try { json = await res.json(); } catch (_) { throw new Error(path + ' devolveu resposta não-JSON (HTTP ' +
+                    res.status + ').'); }
+            if (!res.ok || json.error) { throw new Error((json.message || ('HTTP ' + res.status)) + ' — ' + path); }
+            return json;
+        }
 
-${JSON.stringify(summary)}`;
+        function extractData(json) { const r = json?.results?.[0]; if (!r) return null; return (r.data !== undefined) ? r
+                .data : r; }
 
-  try{
-    const controller = new AbortController();
-    const timeout = setTimeout(()=>controller.abort(), 8000);
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      signal: controller.signal,
-      body: JSON.stringify({model:'claude-sonnet-4-6', max_tokens:1000, messages:[{role:'user', content:prompt}]})
-    });
-    clearTimeout(timeout);
-    const data = await resp.json();
-    const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
-    if(!text) throw new Error('resposta vazia');
-    renderAIOutput(text, 'remote');
-    return;
-  }catch(e){
-    const local = buildLocalAnalysis();
-    renderAIOutput(local, 'local');
-  }
-}
+        function toArray(d) {
+            if (Array.isArray(d)) return d;
+            if (d && typeof d === 'object') {
+                for (const k of ['historicalDataPrice', 'prices', 'history', 'dividends', 'cashDividends', 'items',
+                        'results'
+                    ]) {
+                    if (Array.isArray(d[k])) return d[k];
+                }
+            }
+            return [];
+        }
 
-/* ---------- Event listeners ---------- */
-els.loadBtn.addEventListener('click', loadData);
-els.aiBtn.addEventListener('click', runAI);
-els.ticker.addEventListener('keydown', e=>{ if(e.key==='Enter') loadData(); });
+        function toObj(d) { if (Array.isArray(d)) return d[0] || {}; return d || {}; }
 
-/* ---------- Inicialização ---------- */
-window.addEventListener('DOMContentLoaded', ()=>{
-  renderTokenSelect();
-  loadFullTickerList();
-  if(location.protocol === 'file:'){
-    document.getElementById('main').innerHTML = `
-      <div class="error-banner" style="font-size:13px;line-height:1.6;padding:20px;">
-        ⚠ <strong>Este arquivo foi aberto direto do disco (file://).</strong> Navegadores bloqueiam fetch() para APIs externas nesse modo.<br><br>
-        Como resolver:<br>
-        1) Use a pré-visualização direto aqui no Claude.<br>
-        2) Suba o arquivo em qualquer hospedagem estática (GitHub Pages, Netlify, Vercel).<br>
-        3) Rode um servidor local, ex: <code>npx serve .</code> ou <code>python -m http.server</code>, e abra por http://localhost.<br><br>
-        A busca de cotações precisa de http/https pra funcionar. A leitura de IA funciona sempre, em qualquer modo — ela roda localmente no navegador.
-      </div>`;
-    return;
-  }
-  loadData();
-});
-</script>
+        function parseDate(v) {
+            if (v === null || v === undefined) return null;
+            if (typeof v === 'number') return new Date(v > 2e10 ? v : v * 1000);
+            const d = new Date(v);
+            return isNaN(d) ? null : d;
+        }
+
+        /* ---------- Layout ---------- */
+        function buildLayout() {
+            els.main.innerHTML = `
+                <div id="errBox"></div>
+                <div class="hero-row" id="heroRow"></div>
+                <div class="grid">
+                  <div class="card span-8">
+                    <div class="card-head">
+                      <h3>Histórico de preço · 1 ano</h3>
+                      <div class="legend"><span><i style="background:#d4a043"></i>Fechamento</span><span><i style="background:#2dd4a0"></i>MM20</span></div>
+                    </div>
+                    <div class="section-body" id="secPrice"><div class="chart-box"><canvas id="chartPrice"></canvas></div></div>
+                  </div>
+                  <div class="card span-4">
+                    <h3>P/VP</h3>
+                    <div class="section-body" id="secGauge"><div class="chart-box"><canvas id="gaugeCanvas"></canvas></div></div>
+                  </div>
+
+                  <div class="card span-6">
+                    <h3>Dividendos mensais</h3>
+                    <div class="section-body" id="secDivChart"><div class="chart-box"><canvas id="chartDiv"></canvas></div></div>
+                  </div>
+                  <div class="card span-6">
+                    <h3>Dividend yield mensal</h3>
+                    <div class="section-body" id="secDYChart"><div class="chart-box"><canvas id="chartDY"></canvas></div></div>
+                  </div>
+
+                  <div class="card span-6">
+                    <h3>Retorno acumulado</h3>
+                    <div class="section-body" id="secCum"><div class="chart-box short"><canvas id="chartCum"></canvas></div></div>
+                  </div>
+                  <div class="card span-6">
+                    <h3>Volume negociado</h3>
+                    <div class="section-body" id="secVol"><div class="chart-box short"><canvas id="chartVol"></canvas></div></div>
+                  </div>
+
+                  <div class="card span-4">
+                    <h3>Indicadores</h3>
+                    <div class="section-body" id="secStats"><div class="stat-grid" id="statGrid"></div></div>
+                  </div>
+                  <div class="card span-8">
+                    <h3>Últimos dividendos pagos</h3>
+                    <div class="section-body" id="secDivTable" style="max-height:270px;overflow-y:auto;">
+                      <table id="divTable"><thead><tr><th>Data base</th><th>Pagamento</th><th>Valor</th><th>Tipo</th></tr></thead><tbody></tbody></table>
+                    </div>
+                  </div>
+
+                  <div class="card span-12 ai-panel">
+                    <h3>Leitura interpretativa</h3>
+                    <div id="aiOutput" class="ai-output">Carregue um ativo e clique em <strong>IA · Leitura</strong> no topo para gerar uma interpretação com base nos dados carregados (tendência, dividendos, valuation, pontos de atenção).</div>
+                  </div>
+
+                  <div class="span-12">
+                    <details class="debug-panel">
+                      <summary>Ver resposta bruta da API (debug)</summary>
+                      <pre id="debugPre"></pre>
+                    </details>
+                  </div>
+                </div>
+              `;
+        }
+
+        function sectionError(id, msg) {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = `<div class="mini-error">⚠ ${msg}</div>`;
+        }
+
+        function renderHero(q, ticker, histNorm) {
+            const chg = q.regularMarketChangePercent ?? 0;
+            const cls = chg >= 0 ? 'up' : 'down';
+            document.getElementById('heroRow').innerHTML = `
+                <div class="hero-cell main">
+                  <div class="label">${ticker} · ${q.shortName || q.longName || ''}</div>
+                  <div class="value">R$ ${fmtBRL(q.regularMarketPrice)}</div>
+                  <div class="sub ${cls}">${chg >= 0 ? '▲' : '▼'} ${fmtPct(chg)} hoje</div>
+                  <canvas id="heroSpark" class="hero-spark"></canvas>
+                </div>
+                <div class="hero-cell">
+                  <div class="label">Mín / Máx 52 sem.</div>
+                  <div class="value" style="font-size:15px;">R$ ${fmtBRL(q.fiftyTwoWeekLow)} <span style="color:var(--muted-2)">—</span> R$ ${fmtBRL(q.fiftyTwoWeekHigh)}</div>
+                </div>
+                <div class="hero-cell">
+                  <div class="label">Máx./mín. do dia</div>
+                  <div class="value" style="font-size:15px;">R$ ${fmtBRL(q.regularMarketDayLow)} <span style="color:var(--muted-2)">—</span> R$ ${fmtBRL(q.regularMarketDayHigh)}</div>
+                </div>
+                <div class="hero-cell">
+                  <div class="label">Valor de mercado</div>
+                  <div class="value" style="font-size:17px;">${fmtCompactBRL(q.marketCap)}</div>
+                </div>
+                <div class="hero-cell">
+                  <div class="label">Volume (título)</div>
+                  <div class="value" style="font-size:17px;">${fmtCompactNum(q.regularMarketVolume)}</div>
+                </div>
+                <div class="hero-cell">
+                  <div class="label">Variação</div>
+                  <div class="value ${cls}" style="font-size:17px;">${fmtPct(chg)}</div>
+                </div>
+              `;
+            if (histNorm && histNorm.length > 1) {
+                registerChart('heroSpark', (ctx, w, h) => {
+                    drawLineChart(ctx, w, h, {
+                        labels: histNorm.map(() => ''),
+                        series: [{ data: histNorm.map(p => p.close), color: chg >= 0 ? '#2dd4a0' :
+                                '#f05a6a', width: 1.6, fill: true }],
+                        padding: { top: 2, right: 2, bottom: 2, left: 2 }
+                    });
+                });
+            }
+        }
+
+        function gaugeVP(stats, q) {
+            const pvp = stats.priceToBook ?? stats.pvp ?? stats.priceToBookRatio ?? null;
+            let label, color;
+            if (pvp === null) { label = 'Indicador não\nretornado pela API';
+                color = '#7a8ba8'; } else if (pvp < 0.97) { label = 'DESCONTO sobre\no valor patrimonial';
+                color = '#2dd4a0'; } else if (pvp > 1.03) { label = 'ÁGIO sobre\no valor patrimonial';
+                color = '#f05a6a'; } else { label = 'Próximo ao\nvalor patrimonial';
+                color = '#d4a043'; }
+            registerChart('gaugeCanvas', (ctx, w, h) => {
+                drawGauge(ctx, w, h, pvp !== null ? Number(pvp) : null, { min: 0, max: 2, color, label });
+            });
+        }
+
+        function renderStatGrid(q, stats) {
+            const rows = [
+                ['Preço atual', 'R$ ' + fmtBRL(q.regularMarketPrice)],
+                ['VP / cota', (stats.bookValue ?? stats.navPerShare) ? 'R$ ' + fmtBRL(stats.bookValue ?? stats
+                    .navPerShare) : '—'],
+                ['P/L', (stats.trailingPE ?? stats.priceEarnings) ? fmtBRL(stats.trailingPE ?? stats
+                    .priceEarnings) : '—'],
+                ['P/VP', (stats.priceToBook ?? stats.pvp) ? fmtBRL(stats.priceToBook ?? stats.pvp) : '—'],
+                ['DY 12m', (stats.dividendYield ?? stats.dividendYield12m) ? fmtBRL((stats.dividendYield ??
+                    stats.dividendYield12m)) + '%' : '—'],
+                ['Market cap', fmtCompactBRL(q.marketCap)],
+                ['Máx. 52 sem.', 'R$ ' + fmtBRL(q.fiftyTwoWeekHigh)],
+                ['Mín. 52 sem.', 'R$ ' + fmtBRL(q.fiftyTwoWeekLow)],
+                ['Moeda', q.currency || 'BRL'],
+            ];
+            document.getElementById('statGrid').innerHTML = rows.map(([k, v]) => `
+                <div class="stat-item"><span class="k">${k}</span><span class="v">${v}</span></div>
+              `).join('');
+        }
+
+        function renderDivTable(divs) {
+            const tbody = document.querySelector('#divTable tbody');
+            if (!divs || !divs.length) {
+                tbody.innerHTML =
+                    `<tr><td colspan="4" style="color:var(--muted-2)">Sem dados de dividendos retornados pela API para este ticker.</td></tr>`;
+                return;
+            }
+            const norm = divs.map(d => ({
+                base: parseDate(d.date ?? d.dataCom ?? d.approvedOn),
+                pgto: parseDate(d.paymentDate ?? d.paymentOn ?? d.dataPagamento),
+                valor: d.rate ?? d.value ?? d.amount ?? d.valor ?? 0,
+                tipo: d.label ?? d.type ?? d.category ?? 'Rendimento'
+            })).sort((a, b) => (b.pgto || b.base || 0) - (a.pgto || a.base || 0));
+            tbody.innerHTML = norm.slice(0, 15).map(d => `
+                <tr>
+                  <td>${d.base ? d.base.toLocaleDateString('pt-BR') : '—'}</td>
+                  <td>${d.pgto ? d.pgto.toLocaleDateString('pt-BR') : '—'}</td>
+                  <td>R$ ${fmtBRL(d.valor, 4)}</td>
+                  <td>${d.tipo}</td>
+                </tr>
+              `).join('');
+        }
+
+        function renderPriceChart(hist) {
+            const labels = hist.map(h => h.d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+            const prices = hist.map(h => h.close);
+            const sma20 = calcSMA(prices, 20);
+            registerChart('chartPrice', (ctx, w, h) => {
+                drawLineChart(ctx, w, h, {
+                    labels,
+                    yTickFmt: v => 'R$ ' + v.toFixed(1),
+                    series: [
+                        { data: prices, color: '#d4a043', width: 2, fill: true },
+                        { data: sma20, color: '#2dd4a0', width: 1.3 }
+                    ]
+                });
+            });
+        }
+
+        function renderCumChart(hist) {
+            const base = hist[0]?.close || 1;
+            const labels = hist.map(h => h.d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+            const ret = hist.map(h => ((h.close - base) / base * 100));
+            const last = ret[ret.length - 1] ?? 0;
+            registerChart('chartCum', (ctx, w, h) => {
+                drawLineChart(ctx, w, h, {
+                    labels,
+                    yTickFmt: v => v.toFixed(0) + '%',
+                    series: [{ data: ret, color: last >= 0 ? '#2dd4a0' : '#f05a6a', width: 2, fill: true }]
+                });
+            });
+        }
+
+        function renderVolChart(hist) {
+            const labels = hist.map(h => h.d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+            const vols = hist.map(h => h.volume || 0);
+            registerChart('chartVol', (ctx, w, h) => {
+                drawBarChart(ctx, w, h, { labels, data: vols, color: '#1e3a4a', yTickFmt: v => fmtCompactNum(
+                        v) });
+            });
+        }
+
+        function monthKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+
+        function renderDivChart(divs) {
+            if (!divs || !divs.length) return null;
+            const map = {};
+            divs.forEach(d => {
+                const dt = parseDate(d.date ?? d.dataCom ?? d.approvedOn);
+                if (!dt) return;
+                const k = monthKey(dt);
+                map[k] = (map[k] || 0) + Number(d.rate ?? d.value ?? d.amount ?? d.valor ?? 0);
+            });
+            const keys = Object.keys(map).sort().slice(-12);
+            if (!keys.length) return null;
+            registerChart('chartDiv', (ctx, w, h) => {
+                drawBarChart(ctx, w, h, { labels: keys, data: keys.map(k => map[k]), color: '#d4a043',
+                    yTickFmt: v => 'R$ ' + v.toFixed(2) });
+            });
+            return map;
+        }
+
+        function renderDYChart(divMap, price) {
+            if (!divMap || !price) return;
+            const keys = Object.keys(divMap).sort().slice(-12);
+            const dy = keys.map(k => (divMap[k] / price * 100));
+            registerChart('chartDY', (ctx, w, h) => {
+                drawLineChart(ctx, w, h, {
+                    labels: keys,
+                    yTickFmt: v => v.toFixed(1) + '%',
+                    series: [{ data: dy, color: '#2dd4a0', width: 2, fill: true, points: true }]
+                });
+            });
+        }
+
+        /* ---------- Carregar dados ---------- */
+        let currentData = null;
+        let debugLog = {};
+        let lastHistNorm = [];
+        let lastDivMap = null;
+        let lastStats = {};
+
+        async function loadData() {
+            const ticker = els.ticker.value.trim().toUpperCase();
+            const token = getToken();
+            if (!ticker) return;
+            const fii = isFII(ticker);
+            debugLog = {};
+
+            els.loadBtn.textContent = 'Carregando…';
+            els.loadBtn.disabled = true;
+            buildLayout();
+            const errBox = document.getElementById('errBox');
+
+            try {
+                const quoteJson = await apiGet('/v2/stocks/quote', { symbols: ticker }, token);
+                debugLog.quote = quoteJson;
+                const q = toObj(extractData(quoteJson));
+                if (!q || !q.regularMarketPrice) {
+                    throw new Error(
+                        'A API respondeu mas sem regularMarketPrice — veja "debug" no rodapé para checar os campos reais.'
+                        );
+                }
+                currentData = { ticker, quote: q };
+
+                let histNorm = [];
+                try {
+                    const histJson = await apiGet('/v2/stocks/historical', { symbols: ticker, range: '1y',
+                        interval: '1d' }, token);
+                    debugLog.historical = histJson;
+                    const raw = toArray(extractData(histJson));
+                    histNorm = raw.map(p => ({
+                        d: parseDate(p.date ?? p.datetime ?? p.time),
+                        close: p.close ?? p.regularMarketClose ?? p.adjustedClose,
+                        volume: p.volume ?? p.regularMarketVolume
+                    })).filter(p => p.d && p.close != null);
+                } catch (e) { debugLog.historical_error = e.message; }
+                lastHistNorm = histNorm;
+
+                renderHero(q, ticker, histNorm);
+
+                if (histNorm.length) {
+                    renderPriceChart(histNorm);
+                    renderCumChart(histNorm);
+                    renderVolChart(histNorm);
+                } else {
+                    sectionError('secPrice', debugLog.historical_error || 'Histórico veio vazio para este ticker/plano.');
+                    sectionError('secCum', 'Sem histórico.');
+                    sectionError('secVol', 'Sem histórico.');
+                }
+
+                let divs = [];
+                lastDivMap = null;
+                try {
+                    const divPath = fii ? '/v2/fii/dividends' : '/v2/stocks/dividends';
+                    const divJson = await apiGet(divPath, { symbols: ticker }, token);
+                    debugLog.dividends = divJson;
+                    divs = toArray(extractData(divJson));
+                    renderDivTable(divs);
+                    const divMap = renderDivChart(divs);
+                    lastDivMap = divMap;
+                    if (divMap) renderDYChart(divMap, q.regularMarketPrice);
+                    else { sectionError('secDivChart', 'Sem dividendos suficientes para montar o gráfico.');
+                        sectionError('secDYChart', 'Sem dados.'); }
+                } catch (e) {
+                    debugLog.dividends_error = e.message;
+                    renderDivTable([]);
+                    sectionError('secDivChart', e.message);
+                    sectionError('secDYChart', 'Sem dados.');
+                }
+
+                lastStats = {};
+                try {
+                    const statPath = fii ? '/v2/fii/indicators' : '/v2/stocks/statistics';
+                    const statParams = fii ? { symbols: ticker } : { symbols: ticker, mode: 'current' };
+                    const statJson = await apiGet(statPath, statParams, token);
+                    debugLog.statistics = statJson;
+                    const stats = toObj(extractData(statJson));
+                    lastStats = stats;
+                    renderStatGrid(q, stats);
+                    gaugeVP(stats, q);
+                } catch (e) {
+                    debugLog.statistics_error = e.message;
+                    renderStatGrid(q, {});
+                    gaugeVP({}, q);
+                    sectionError('secGauge', e.message);
+                }
+
+                document.getElementById('aiOutput').innerHTML =
+                    'Dados carregados para <strong>' + ticker +
+                    '</strong>. Clique em <strong>IA · Leitura</strong> no topo para gerar a interpretação.';
+
+            } catch (e) {
+                errBox.innerHTML =
+                    `<div class="error-banner">⚠ ${e.message}${token ? '' : ' — se o ticker não é PETR4/VALE3/MGLU3/ITUB4, verifique a chave da API.'}</div>`;
+                currentData = null;
+            } finally {
+                document.getElementById('debugPre').textContent = JSON.stringify(debugLog, null, 2);
+                els.loadBtn.textContent = 'Analisar';
+                els.loadBtn.disabled = false;
+            }
+        }
+
+        /* =====================================================================
+               MOTOR DE ANÁLISE LOCAL (sempre disponível, sem rede)
+               ===================================================================== */
+        function buildLocalAnalysis() {
+            const q = currentData.quote;
+            const ticker = currentData.ticker;
+            const hist = lastHistNorm;
+            const divMap = lastDivMap;
+            const stats = lastStats || {};
+            const parts = [];
+
+            if (hist.length >= 10) {
+                const closes = hist.map(h => h.close);
+                const last = closes[closes.length - 1];
+                const first = closes[0];
+                const totalPct = ((last - first) / first) * 100;
+                const win30 = closes.slice(-30);
+                const pct30 = win30.length > 1 ? ((last - win30[0]) / win30[0]) * 100 : null;
+                const high52 = q.fiftyTwoWeekHigh,
+                    low52 = q.fiftyTwoWeekLow;
+                const distHigh = (high52 && last) ? ((last - high52) / high52 * 100) : null;
+                const distLow = (low52 && last) ? ((last - low52) / low52 * 100) : null;
+                let trendLabel = Math.abs(totalPct) < 6 ? 'lateralizado, sem direção clara' : (totalPct > 0 ?
+                    'em tendência de alta' : 'em tendência de baixa');
+                let txt = `${ticker} está ${trendLabel} no período de 1 ano, com variação acumulada de ${fmtPct(totalPct)}.`;
+                if (pct30 !== null) txt += ` Nos últimos 30 pregões, a variação foi de ${fmtPct(pct30)}.`;
+                if (distHigh !== null) txt +=
+                    ` O preço atual está ${Math.abs(distHigh).toFixed(1)}% ${distHigh < 0 ? 'abaixo' : 'acima'} da máxima de 52 semanas`;
+                if (distLow !== null) txt +=
+                    ` e ${Math.abs(distLow).toFixed(1)}% ${distLow < 0 ? 'abaixo' : 'acima'} da mínima de 52 semanas.`;
+                else txt += '.';
+                parts.push({ h: 'Tendência de preço', t: txt });
+            } else {
+                parts.push({ h: 'Tendência de preço',
+                    t: 'Histórico de preço insuficiente ou não retornado pela API para este ticker — sem base para avaliar tendência.'
+                });
+            }
+
+            if (divMap && Object.keys(divMap).length) {
+                const keys = Object.keys(divMap).sort();
+                const vals = keys.map(k => divMap[k]);
+                const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+                const variance = vals.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / vals.length;
+                const cv = mean > 0 ? (Math.sqrt(variance) / mean) * 100 : null;
+                const half = Math.floor(vals.length / 2);
+                const firstHalfAvg = vals.slice(0, half).reduce((a, b) => a + b, 0) / (half || 1);
+                const secondHalfAvg = vals.slice(half).reduce((a, b) => a + b, 0) / ((vals.length - half) || 1);
+                const direction = secondHalfAvg > firstHalfAvg * 1.05 ? 'crescente' : (secondHalfAvg < firstHalfAvg *
+                    0.95 ? 'decrescente' : 'estável');
+                let txt =
+                    `Foram identificados pagamentos em ${keys.length} dos últimos meses cobertos pela API, com média de R$ ${fmtBRL(mean, 4)} por cota/ação.`;
+                if (cv !== null) txt +=
+                    ` A variação entre os pagamentos (coeficiente de variação) é de ${cv.toFixed(0)}%, o que indica ${cv < 20 ? 'boa regularidade' : (cv < 45 ? 'regularidade moderada' : 'irregularidade relevante')} nos valores distribuídos.`;
+                txt +=
+                    ` A tendência dos pagamentos recentes é ${direction} em relação à primeira metade do período analisado.`;
+                parts.push({ h: 'Consistência de dividendos', t: txt });
+            } else {
+                parts.push({ h: 'Consistência de dividendos',
+                    t: 'Não há dados de dividendos retornados pela API para este ticker no período — não é possível avaliar consistência de pagamentos.'
+                });
+            }
+
+            const pvp = stats.priceToBook ?? stats.pvp ?? stats.priceToBookRatio ?? null;
+            const pl = stats.trailingPE ?? stats.priceEarnings ?? null;
+            const dy = stats.dividendYield ?? stats.dividendYield12m ?? null;
+            if (pvp === null && pl === null && dy === null) {
+                parts.push({ h: 'Valuation',
+                    t: 'Nenhum indicador fundamentalista (P/VP, P/L, DY) foi retornado pela API para este ticker — sem base para leitura de valuation.'
+                });
+            } else {
+                let txt = '';
+                if (pvp !== null) txt +=
+                    `P/VP de ${Number(pvp).toFixed(2)} indica que o ativo está negociando ${pvp < 0.97 ? 'com desconto' : (pvp > 1.03 ? 'com ágio' : 'próximo')} em relação ao valor patrimonial. `;
+                if (pl !== null) txt +=
+                    `P/L de ${Number(pl).toFixed(1)} é considerado ${pl < 8 ? 'baixo' : (pl < 15 ? 'moderado' : 'elevado')} pelos parâmetros usuais de mercado. `;
+                if (dy !== null) txt += `O dividend yield de 12 meses reportado é de ${Number(dy).toFixed(2)}%.`;
+                parts.push({ h: 'Valuation', t: txt.trim() });
+            }
+
+            const alerts = [];
+            if (!hist.length) alerts.push('histórico de preço ausente para este ticker/plano da API');
+            if (!divMap) alerts.push('sem histórico de dividendos disponível');
+            if (pvp === null) alerts.push('indicador P/VP não disponível');
+            if (hist.length >= 30) {
+                const closes = hist.map(h => h.close);
+                const rets = closes.slice(1).map((c, i) => (c - closes[i]) / closes[i]);
+                const meanR = rets.reduce((a, b) => a + b, 0) / rets.length;
+                const vol = Math.sqrt(rets.reduce((a, b) => a + Math.pow(b - meanR, 2), 0) / rets.length) * Math.sqrt(
+                    252) * 100;
+                if (vol > 45) alerts.push(`volatilidade anualizada estimada alta (~${vol.toFixed(0)}%)`);
+            }
+            const alertText = alerts.length ?
+                `Pontos que merecem atenção antes de qualquer decisão: ${alerts.join('; ')}.` :
+                'Não foram identificadas lacunas relevantes nos dados carregados para este ticker.';
+            parts.push({ h: 'Pontos de atenção', t: alertText });
+
+            let scenario = 'Combinando os sinais disponíveis, ';
+            const bullets = [];
+            if (hist.length >= 10) {
+                const closes = hist.map(h => h.close);
+                const totalPct = ((closes[closes.length - 1] - closes[0]) / closes[0]) * 100;
+                bullets.push(totalPct > 6 ? 'o movimento de preço recente é favorável' : (totalPct < -6 ?
+                    'o movimento de preço recente é desfavorável' : 'o preço está sem tendência definida'));
+            }
+            if (pvp !== null) bullets.push(pvp < 0.97 ? 'o valuation sugere desconto' : (pvp > 1.03 ?
+                'o valuation sugere ágio' : 'o valuation está equilibrado'));
+            scenario += bullets.length ? bullets.join(' e ') + '.' :
+                'os dados disponíveis são insuficientes para uma leitura de cenário confiável.';
+            scenario +=
+                ' Essa é uma leitura estatística automática a partir dos dados carregados, não uma recomendação de compra ou venda.';
+            parts.push({ h: 'Cenário provável', t: scenario });
+
+            return parts.map(p => `**${p.h}**\n${p.t}`).join('\n\n');
+        }
+
+        function renderAIOutput(text, source) {
+            const out = document.getElementById('aiOutput');
+            const html = text
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/^/, '<p>')
+                .concat('</p>');
+            const tag = source === 'remote' ?
+                '<span class="ai-source remote">Gerado por Claude</span><br>' :
+                '<span class="ai-source local">Motor de análise local</span><br>';
+            out.innerHTML = tag + html;
+        }
+
+        /* ---------- IA (tenta Claude real; fallback local) ---------- */
+        async function runAI() {
+            if (!currentData) {
+                alert('Carregue um ativo primeiro clicando em "Analisar".');
+                return;
+            }
+            const out = document.getElementById('aiOutput');
+            out.innerHTML =
+                `<div class="ai-loading">Gerando leitura <span class="dot"></span><span class="dot"></span><span class="dot"></span></div>`;
+
+            const summary = {
+                ticker: currentData.ticker,
+                cotacao: currentData.quote,
+                historico_bruto: debugLog.historical ? toArray(extractData(debugLog.historical)).slice(-60) : [],
+                dividendos_brutos: debugLog.dividends ? toArray(extractData(debugLog.dividends)).slice(-12) : [],
+                indicadores: debugLog.statistics ? extractData(debugLog.statistics) : null
+            };
+            const prompt =
+                `Você é um analista de investimentos. Com base nos dados JSON abaixo sobre o ativo ${currentData.ticker} (B3, FII ou ação), escreva uma análise curta e objetiva em português do Brasil, em parágrafos curtos, com estes tópicos em **negrito**:
+
+            **Tendência de preço** **Consistência de dividendos** **Valuation** **Pontos de atenção** **Cenário provável**
+
+            Se algum bloco vier vazio, diga isso explicitamente em vez de inventar números. Direto, sem disclaimers longos (só uma frase final curta). Dados:
+
+            ${JSON.stringify(summary)}`;
+
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 8000);
+                const resp = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal,
+                    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, messages: [{ role: 'user',
+                            content: prompt }] })
+                });
+                clearTimeout(timeout);
+                const data = await resp.json();
+                const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+                if (!text) throw new Error('resposta vazia');
+                renderAIOutput(text, 'remote');
+                return;
+            } catch (_) {
+                const local = buildLocalAnalysis();
+                renderAIOutput(local, 'local');
+            }
+        }
+
+        /* ---------- Event listeners ---------- */
+        els.loadBtn.addEventListener('click', loadData);
+        els.aiBtn.addEventListener('click', runAI);
+        els.ticker.addEventListener('keydown', e => { if (e.key === 'Enter') loadData(); });
+
+        /* ---------- Inicialização ---------- */
+        window.addEventListener('DOMContentLoaded', () => {
+            if (location.protocol === 'file:') {
+                document.getElementById('main').innerHTML = `
+                  <div class="error-banner" style="font-size:13px;line-height:1.6;padding:20px;">
+                    ⚠ <strong>Este arquivo foi aberto direto do disco (file://).</strong> Navegadores bloqueiam fetch() para APIs externas nesse modo.<br><br>
+                    Como resolver:<br>
+                    1) Use a pré-visualização direto aqui no Claude.<br>
+                    2) Suba o arquivo em qualquer hospedagem estática (GitHub Pages, Netlify, Vercel).<br>
+                    3) Rode um servidor local, ex: <code>npx serve .</code> ou <code>python -m http.server</code>, e abra por http://localhost.<br><br>
+                    A busca de cotações precisa de http/https para funcionar. A leitura de IA funciona sempre, em qualquer modo — ela roda localmente no navegador.
+                  </div>`;
+                return;
+            }
+            loadData();
+        });
+    </script>
 </body>
 </html>
